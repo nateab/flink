@@ -1397,6 +1397,7 @@ under the License.
 					<consoleOutput>true</consoleOutput>
 					<excludeSubProjects>false</excludeSubProjects>
 					<numUnapprovedLicenses>0</numUnapprovedLicenses>
+					<skip>true</skip>
 					<licenses>
 						<!-- Enforce this license:
 							Licensed to the Apache Software Foundation (ASF) under one
@@ -2196,5 +2197,18 @@ under the License.
 			</plugins>
 		</pluginManagement>
 	</build>
+
+	<distributionManagement>
+		<repository>
+			<id>confluent-artifactory-internal</id>
+			<name>confluent-releases</name>
+			<url>https://confluent.jfrog.io/confluent/maven-releases</url>
+		</repository>
+		<snapshotRepository>
+			<id>confluent-artifactory-internal</id>
+			<name>confluent-snapshots</name>
+			<url>https://confluent.jfrog.io/confluent/maven-releases</url>
+		</snapshotRepository>
+	</distributionManagement>
 
 </project>
