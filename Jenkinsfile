@@ -2,6 +2,7 @@
 
 def defaultParams = [
     string(name: 'SKIP_TESTS', defaultValue: 'false', description: 'Skip tests (true or false)')
+    string(name: 'SKIP_DEPLOY_TAR_GZ', defaultValue: 'true', description: 'Skip deploying tar.gz package (true or false)')
 ]
 
 def config = jobConfig {
@@ -27,6 +28,16 @@ def job = {
                         sh """
                             ./mvnw --batch-mode --fail-at-end clean package ${skipTestsArgs}
                             ./mvnw --batch-mode deploy ${skipTestsArgs}
+                            VERSION=$(./mvnw org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version | egrep '^[0-9]')
+                            ln -s build-target flink
+                            tar -cLf confluent-flink.tar.gz flink
+                            ./mvnw deploy:deploy-file -DgroupId=io.confluent.flink \
+                                  -DartifactId=confluent-flink \
+                                  -Dversion=${VERSION} \
+                                  -Dpackaging=tar.gz \
+                                  -Dfile=confluent-flink.tar.gz \
+                                  -DrepositoryId=confluent-artifactory-internal \
+                                  -Durl=https://confluent.jfrog.io/confluent/maven-releases
                            """
                     }
                 }
