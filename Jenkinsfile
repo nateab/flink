@@ -32,7 +32,7 @@ def job = {
                             ln -s build-target flink
                             tar -cLf confluent-flink.tar.gz flink
                             ./mvnw deploy:deploy-file -DgroupId=io.confluent.flink \
-                                  -DartifactId=confluent-flink \
+                                  -DartifactId=flink \
                                   -Dversion=${VERSION} \
                                   -Dpackaging=tar.gz \
                                   -Dfile=confluent-flink.tar.gz \
