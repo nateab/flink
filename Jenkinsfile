@@ -9,9 +9,14 @@ def config = jobConfig {
     properties = [parameters(defaultParams)]
     testResultSpecs = ['junit': '**/build/test-results/**/TEST-*.xml']
     timeoutHours = 4
+    slackChannel = '#ksqldb-quality-oncall'
 }
 
 def job = {
+    if (config.isPrJob) {
+        config.slackChannel = ''
+    }
+
     stage('Build') {
         def skipTestsArgs = ''
         if (params.SKIP_TESTS.trim() == 'true') {
