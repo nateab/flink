@@ -31,7 +31,7 @@ def job = {
                         sh '''
                             VERSION=$(./mvnw org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version | egrep '^[0-9]')
                             ln -s build-target flink
-                            tar -cLf confluent-flink.tar.gz flink
+                            tar -chf confluent-flink.tar.gz flink
                             ./mvnw deploy:deploy-file -DgroupId=io.confluent.flink \
                                   -DartifactId=flink \
                                   -Dversion=${VERSION} \
