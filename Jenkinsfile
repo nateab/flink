@@ -42,8 +42,8 @@ def job = {
                                   -Dversion=${VERSION} \
                                   -Dpackaging=tar.gz \
                                   -Dfile=confluent-flink.tar.gz \
-                                  -DrepositoryId=confluent-artifactory-internal \
-                                  -Durl=https://confluent.jfrog.io/confluent/maven-releases
+                                  -DrepositoryId=confluent-codeartifact-internal \
+                                  -Durl=https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases
                            '''
                     }
                 }
