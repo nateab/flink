@@ -2200,14 +2200,14 @@ under the License.
 
 	<distributionManagement>
 		<repository>
-			<id>confluent-artifactory-internal</id>
-			<name>confluent-releases</name>
-			<url>https://confluent.jfrog.io/confluent/maven-releases</url>
+                       <id>confluent-codeartifact-internal</id>
+                       <name>confluent-releases</name>
+                       <url>https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases</url>
 		</repository>
 		<snapshotRepository>
-			<id>confluent-artifactory-internal</id>
-			<name>confluent-snapshots</name>
-			<url>https://confluent.jfrog.io/confluent/maven-releases</url>
+                       <id>confluent-codeartifact-internal</id>
+                       <name>confluent-snapshots</name>
+                       <url>https://confluent-519856050701.d.codeartifact.us-west-2.amazonaws.com/maven/maven-releases</url>
 		</snapshotRepository>
 	</distributionManagement>
 
