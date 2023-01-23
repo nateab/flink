@@ -1,0 +1,10 @@
+name: flink
+lang: java
+lang_version: 8
+git:
+  enable: true
+github:
+  enable: true
+  repo_name: confluentinc/flink
+semaphore:
+  enable: true
