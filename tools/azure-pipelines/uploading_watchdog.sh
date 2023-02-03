@@ -36,8 +36,8 @@ mkdir $FLINK_LOG_DIR || { echo "FAILURE: cannot create log directory '${FLINK_LO
 sudo apt-get install -y moreutils
 
 REAL_START_SECONDS=$(date +"%s")
-REAL_END_SECONDS=$(date -d "$SYSTEM_PIPELINESTARTTIME + $SYSTEM_JOBTIMEOUT minutes" +"%s")
-REAL_TIMEOUT_SECONDS=$(($REAL_END_SECONDS - $REAL_START_SECONDS))
+# TIMEOUT_MIN is set by semaphore CI
+REAL_TIMEOUT_SECONDS=$(($TIMEOUT_MIN * 60))
 KILL_SECONDS_BEFORE_TIMEOUT=$((2 * 60))
 
 echo "Running command '$COMMAND' with a timeout of $(($REAL_TIMEOUT_SECONDS / 60)) minutes."

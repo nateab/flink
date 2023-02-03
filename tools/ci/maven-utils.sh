@@ -16,7 +16,8 @@
 
 # Utility for invoking Maven in CI
 function run_mvn {
-	MVN_CMD="mvn"
+	# todo: make it available for local builder as well
+	MVN_CMD="$HOME/flink/mvnw"
 	if [[ "$M2_HOME" != "" ]]; then
 		MVN_CMD="${M2_HOME}/bin/mvn"
 	fi

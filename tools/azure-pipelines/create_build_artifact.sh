@@ -19,6 +19,13 @@
 
 echo "Creating build artifact dir $FLINK_ARTIFACT_DIR"
 
+if [ -d "$FLINK_ARTIFACT_DIR" ]; then
+    echo "Build artifact dir $FLINK_ARTIFACT_DIR already exists. Deleting it."
+    rm -rf "$FLINK_ARTIFACT_DIR"
+else
+    echo "Build artifact dir $FLINK_ARTIFACT_DIR does not exist. Creating it."
+    mkdir -p "$FLINK_ARTIFACT_DIR"
+fi
 cp -r . "$FLINK_ARTIFACT_DIR"
 
 echo "Minimizing artifact files"

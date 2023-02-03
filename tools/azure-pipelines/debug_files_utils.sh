@@ -19,7 +19,6 @@
 
 function prepare_debug_files {
 	MODULE=$@
-	export DEBUG_FILES_OUTPUT_DIR="$AGENT_TEMPDIRECTORY/debug_files"
 	export DEBUG_FILES_NAME="$(echo $MODULE | tr -c '[:alnum:]\n\r' '_')-$(date +%s)"
 	echo "##vso[task.setvariable variable=DEBUG_FILES_OUTPUT_DIR]$DEBUG_FILES_OUTPUT_DIR"
 	echo "##vso[task.setvariable variable=DEBUG_FILES_NAME]$DEBUG_FILES_NAME"
