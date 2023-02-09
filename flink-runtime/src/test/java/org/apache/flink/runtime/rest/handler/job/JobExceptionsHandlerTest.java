@@ -158,6 +158,7 @@ public class JobExceptionsHandlerTest extends TestLogger {
         final RootExceptionHistoryEntry otherFailure =
                 new RootExceptionHistoryEntry(
                         new RuntimeException("exception #1"),
+                        Collections.emptyList(),
                         System.currentTimeMillis(),
                         "task name",
                         new LocalTaskManagerLocation(),
@@ -192,6 +193,7 @@ public class JobExceptionsHandlerTest extends TestLogger {
         final RootExceptionHistoryEntry failure =
                 new RootExceptionHistoryEntry(
                         new RuntimeException("exception #1"),
+                        Collections.emptyList(),
                         System.currentTimeMillis(),
                         "task name",
                         null,
@@ -223,6 +225,7 @@ public class JobExceptionsHandlerTest extends TestLogger {
         final RootExceptionHistoryEntry otherFailure =
                 new RootExceptionHistoryEntry(
                         new RuntimeException("exception #1"),
+                        Collections.emptyList(),
                         System.currentTimeMillis(),
                         "task name",
                         new LocalTaskManagerLocation(),
@@ -317,6 +320,7 @@ public class JobExceptionsHandlerTest extends TestLogger {
                 Collections.singletonList(
                         new RootExceptionHistoryEntry(
                                 failureCause,
+                                Collections.emptyList(),
                                 failureTimestamp,
                                 "test task #1",
                                 new LocalTaskManagerLocation(),
@@ -421,7 +425,8 @@ public class JobExceptionsHandlerTest extends TestLogger {
     }
 
     private static RootExceptionHistoryEntry fromGlobalFailure(Throwable cause, long timestamp) {
-        return new RootExceptionHistoryEntry(cause, timestamp, null, null, Collections.emptySet());
+        return new RootExceptionHistoryEntry(
+                cause, Collections.emptyList(), timestamp, null, null, Collections.emptySet());
     }
 
     // -------- factory methods for instantiating new Matchers --------

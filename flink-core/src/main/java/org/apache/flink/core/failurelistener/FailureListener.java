@@ -16,38 +16,19 @@
  * limitations under the License.
  */
 
-export interface JobException {
-  'root-exception': string;
-  timestamp: number;
-  truncated: boolean;
-  'all-exceptions': JobExceptionItem[];
-  exceptionHistory: JobExceptionHistory;
-}
+package org.apache.flink.core.failurelistener;
 
-export interface JobExceptionItem {
-  'attempt-num': number;
-  exception: string;
-  location: string;
-  'subtask-index': number;
-  task: string;
-  timestamp: number;
-  'vertex-id': string;
-}
+import org.apache.flink.annotation.PublicEvolving;
 
-export interface JobExceptionHistory {
-  entries: RootExceptionInfo[];
-  truncated: boolean;
-}
-
-export interface ExceptionInfo {
-  exceptionName: string;
-  stacktrace: string;
-  timestamp: number;
-  taskName: string;
-  location: string;
-}
-
-export interface RootExceptionInfo extends ExceptionInfo {
-  exceptionTags: string[];
-  concurrentExceptions: ExceptionInfo[];
+/** Failure listener enabling custom logic for each type of failure tracked in the job manager. */
+@PublicEvolving
+public interface FailureListener {
+    /**
+     * Method to handle a failure as part of the listener.
+     *
+     * @param cause the exception that caused this failure
+     * @param context the context that includes extra information (e.g., if it was a global failure)
+     *     along with the Tags associated with the failure
+     */
+    void onFailure(Throwable cause, FailureListenerContext context);
 }

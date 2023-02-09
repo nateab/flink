@@ -18,6 +18,9 @@
 
 package org.apache.flink.util;
 
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.failurelistener.FailureListener;
+
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -38,6 +41,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 /** Tests for classloading and class loader utilities. */
 public class FlinkUserCodeClassLoadersTest extends TestLogger {
@@ -325,6 +329,23 @@ public class FlinkUserCodeClassLoadersTest extends TestLogger {
         parentClassLoader.close();
         childClassLoader1.close();
         childClassLoader2.close();
+    }
+
+    @Test
+    public void testIsUserCodeClassLoader() throws Exception {
+
+        // collect the libraries / class folders with RocksDB related code: the state backend and
+        // RocksDB itself
+        final URL childCodePath = getClass().getProtectionDomain().getCodeSource().getLocation();
+        final MutableURLClassLoader classLoader =
+                createChildFirstClassLoader(childCodePath, getClass().getClassLoader());
+        classLoader.addURL(userJar.toURI().toURL());
+
+        final Class<?> systemClass = Class.forName(FailureListener.class.getName(), false, classLoader);
+        assertFalse(FlinkUserCodeClassLoaders.isUserCodeClassLoader(systemClass.getClassLoader()));
+
+        Class<?> userClass = Class.forName(USER_CLASS, false, classLoader);
+        assertTrue(FlinkUserCodeClassLoaders.isUserCodeClassLoader(userClass.getClassLoader()));
     }
 
     private void assertClassNotFoundException(

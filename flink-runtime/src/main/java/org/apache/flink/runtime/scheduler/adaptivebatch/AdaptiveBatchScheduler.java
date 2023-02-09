@@ -24,6 +24,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions.HybridPartitionDataConsumeConstraint;
+import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointsCleaner;
@@ -70,10 +71,12 @@ import org.apache.flink.util.concurrent.ScheduledExecutor;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -121,6 +124,7 @@ public class AdaptiveBatchScheduler extends DefaultScheduler {
             long initializationTimestamp,
             final ComponentMainThreadExecutor mainThreadExecutor,
             final JobStatusListener jobStatusListener,
+            final Set<FailureListener> failureListeners,
             final ExecutionGraphFactory executionGraphFactory,
             final ShuffleMaster<?> shuffleMaster,
             final Time rpcTimeout,
@@ -150,6 +154,7 @@ public class AdaptiveBatchScheduler extends DefaultScheduler {
                 initializationTimestamp,
                 mainThreadExecutor,
                 jobStatusListener,
+                failureListeners,
                 executionGraphFactory,
                 shuffleMaster,
                 rpcTimeout,
@@ -295,7 +300,7 @@ public class AdaptiveBatchScheduler extends DefaultScheduler {
             }
         } catch (JobException ex) {
             log.error("Unexpected error occurred when initializing ExecutionJobVertex", ex);
-            failJob(ex, System.currentTimeMillis());
+            failJob(ex, Collections.emptyList(), System.currentTimeMillis());
         }
 
         if (newlyInitializedJobVertices.size() > 0) {

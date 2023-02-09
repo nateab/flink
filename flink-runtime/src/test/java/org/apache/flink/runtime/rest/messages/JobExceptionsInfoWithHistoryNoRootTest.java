@@ -63,6 +63,7 @@ public class JobExceptionsInfoWithHistoryNoRootTest
                                         "global failure #0",
                                         "stacktrace #0",
                                         0L,
+                                        Collections.emptyList(),
                                         Collections.singletonList(
                                                 new JobExceptionsInfoWithHistory.ExceptionInfo(
                                                         "local task failure #2",
@@ -78,6 +79,7 @@ public class JobExceptionsInfoWithHistoryNoRootTest
                                         "task name",
                                         "location",
                                         "taskManagerId",
+                                        Collections.emptyList(),
                                         Collections.emptyList())),
                         false));
     }

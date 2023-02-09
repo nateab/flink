@@ -971,7 +971,10 @@ public class DefaultSchedulerTest extends TestLogger {
         final ExecutionVertexVersion executionVertexVersion =
                 executionVertexVersioner.getExecutionVertexVersion(onlyExecutionVertexId);
 
-        scheduler.failJob(new FlinkException("Test failure."), System.currentTimeMillis());
+        scheduler.failJob(
+                new FlinkException("Test failure."),
+                Collections.emptyList(),
+                System.currentTimeMillis());
 
         assertThat(executionVertexVersioner.isModified(executionVertexVersion)).isTrue();
     }

@@ -85,6 +85,7 @@ class FailureHandlingResultSnapshotTest {
                 FailureHandlingResult.restartable(
                         rootCauseExecutionVertex.getCurrentExecutionAttempt(),
                         new RuntimeException("Expected exception: root cause"),
+                        Collections.emptyList(),
                         System.currentTimeMillis(),
                         StreamSupport.stream(
                                         executionGraph.getAllExecutionVertices().spliterator(),
@@ -111,6 +112,7 @@ class FailureHandlingResultSnapshotTest {
                 FailureHandlingResult.restartable(
                         rootCauseExecutionVertex.getCurrentExecutionAttempt(),
                         null,
+                        Collections.emptyList(),
                         rootCauseTimestamp,
                         StreamSupport.stream(
                                         executionGraph.getAllExecutionVertices().spliterator(),
@@ -152,6 +154,7 @@ class FailureHandlingResultSnapshotTest {
                 FailureHandlingResult.restartable(
                         rootCauseExecutionVertex.getCurrentExecutionAttempt(),
                         rootCause,
+                        Collections.emptyList(),
                         rootCauseTimestamp,
                         StreamSupport.stream(
                                         executionGraph.getAllExecutionVertices().spliterator(),
@@ -183,6 +186,7 @@ class FailureHandlingResultSnapshotTest {
                                 new FailureHandlingResultSnapshot(
                                         rootCauseExecution,
                                         new RuntimeException("Expected exception"),
+                                        Collections.emptyList(),
                                         System.currentTimeMillis(),
                                         Collections.singleton(rootCauseExecution)))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -205,6 +209,7 @@ class FailureHandlingResultSnapshotTest {
                 FailureHandlingResult.restartable(
                         null,
                         rootCause,
+                        Collections.emptyList(),
                         timestamp,
                         StreamSupport.stream(
                                         executionGraph.getAllExecutionVertices().spliterator(),

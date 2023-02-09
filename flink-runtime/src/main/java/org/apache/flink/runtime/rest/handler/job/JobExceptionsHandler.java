@@ -190,6 +190,7 @@ public class JobExceptionsHandler
                     historyEntry.getException().getOriginalErrorClassName(),
                     historyEntry.getExceptionAsString(),
                     historyEntry.getTimestamp(),
+                    historyEntry.getFailureTags(),
                     concurrentExceptions);
         }
 
@@ -202,6 +203,7 @@ public class JobExceptionsHandler
                 historyEntry.getFailingTaskName(),
                 toString(historyEntry.getTaskManagerLocation()),
                 toTaskManagerId(historyEntry.getTaskManagerLocation()),
+                historyEntry.getFailureTags(),
                 concurrentExceptions);
     }
 

@@ -22,6 +22,7 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
 import org.apache.flink.runtime.checkpoint.CheckpointsCleaner;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
@@ -126,6 +127,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
             long initializationTimestamp,
             final ComponentMainThreadExecutor mainThreadExecutor,
             final JobStatusListener jobStatusListener,
+            final Set<FailureListener> failureListeners,
             final ExecutionGraphFactory executionGraphFactory,
             final ShuffleMaster<?> shuffleMaster,
             final Time rpcTimeout,
@@ -176,6 +178,10 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         this.executionSlotAllocator =
                 checkNotNull(executionSlotAllocatorFactory)
                         .createInstance(new DefaultExecutionSlotAllocationContext());
+
+        for (FailureListener failureListener : failureListeners) {
+            executionFailureHandler.registerFailureListener(failureListener);
+        }
 
         this.verticesWaitingForRestart = new HashSet<>();
         startUpAction.accept(mainThreadExecutor);
@@ -306,7 +312,10 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         if (failureHandlingResult.canRestart()) {
             restartTasksWithDelay(failureHandlingResult);
         } else {
-            failJob(failureHandlingResult.getError(), failureHandlingResult.getTimestamp());
+            failJob(
+                    failureHandlingResult.getError(),
+                    failureHandlingResult.getFailureTags(),
+                    failureHandlingResult.getTimestamp());
         }
     }
 

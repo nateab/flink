@@ -89,7 +89,6 @@ public class DefaultJobMasterServiceFactory implements JobMasterServiceFactory {
     @Override
     public CompletableFuture<JobMasterService> createJobMasterService(
             UUID leaderSessionId, OnCompletionActions onCompletionActions) {
-
         return CompletableFuture.supplyAsync(
                 FunctionUtils.uncheckedSupplier(
                         () -> internalCreateJobMasterService(leaderSessionId, onCompletionActions)),

@@ -21,6 +21,7 @@ package org.apache.flink.runtime.scheduler.adaptive;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
+import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.runtime.blob.BlobWriter;
 import org.apache.flink.runtime.blocklist.BlocklistOperations;
 import org.apache.flink.runtime.checkpoint.CheckpointRecoveryFactory;
@@ -46,6 +47,7 @@ import org.apache.flink.runtime.shuffle.ShuffleMaster;
 import org.slf4j.Logger;
 
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -82,6 +84,7 @@ public class AdaptiveSchedulerFactory implements SchedulerNGFactory {
             ComponentMainThreadExecutor mainThreadExecutor,
             FatalErrorHandler fatalErrorHandler,
             JobStatusListener jobStatusListener,
+            Set<FailureListener> failureListeners,
             BlocklistOperations blocklistOperations)
             throws Exception {
         final DeclarativeSlotPool declarativeSlotPool =
@@ -138,6 +141,7 @@ public class AdaptiveSchedulerFactory implements SchedulerNGFactory {
                 mainThreadExecutor,
                 fatalErrorHandler,
                 jobStatusListener,
+                failureListeners,
                 executionGraphFactory);
     }
 

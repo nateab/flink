@@ -53,6 +53,8 @@ interface ExceptionHistoryItem {
    * Should this failure be expanded in UI?
    */
   expand: boolean;
+
+  exceptionTags: string;
 }
 
 const stripConcurrentExceptions = function (rootException: RootExceptionInfo): ExceptionInfo {
@@ -136,9 +138,9 @@ export class JobExceptionsComponent implements OnInit, OnDestroy {
         const exceptionHistory = data.exceptionHistory;
         if (exceptionHistory.entries.length > 0) {
           const mostRecentException = exceptionHistory.entries[0];
-          this.rootException = `${formatDate(mostRecentException.timestamp, 'yyyy-MM-dd HH:mm:ss', 'en')}\n${
-            mostRecentException.stacktrace
-          }`;
+          this.rootException = `${formatDate(mostRecentException.timestamp, 'yyyy-MM-dd HH:mm:ss', 'en')} -> ${
+            mostRecentException.exceptionTags
+          }\n${mostRecentException.stacktrace}`;
         } else {
           this.rootException = 'No Root Exception';
         }
@@ -148,7 +150,8 @@ export class JobExceptionsComponent implements OnInit, OnDestroy {
           return {
             selected: values[0],
             exceptions: values,
-            expand: false
+            expand: false,
+            exceptionTags: entry.exceptionTags.join(',')
           };
         });
       });

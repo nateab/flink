@@ -79,6 +79,8 @@ import java.util.stream.Collectors;
 import static org.apache.flink.table.api.Expressions.$;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_LOWER_UDF_CLASS;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_LOWER_UDF_CODE;
+import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_THROWING_UDF_CLASS;
+import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_THROWING_UDF_CODE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
@@ -98,6 +100,9 @@ public class FunctionITCase extends StreamingTestBase {
     private String udfClassName;
     private String jarPath;
 
+    private String udfThrowingClassName;
+    private String throwingJarPath;
+
     @Before
     @Override
     public void before() throws Exception {
@@ -110,6 +115,16 @@ public class FunctionITCase extends StreamingTestBase {
                                 "test-classloader-udf.jar",
                                 udfClassName,
                                 String.format(GENERATED_LOWER_UDF_CODE, udfClassName))
+                        .toURI()
+                        .toString();
+        udfThrowingClassName = GENERATED_THROWING_UDF_CLASS + random.nextInt(50);
+        throwingJarPath =
+                UserClassLoaderJarTestUtils.createJarFile(
+                                TEMPORARY_FOLDER.newFolder(
+                                        String.format("test-throwing-jar-%s", UUID.randomUUID())),
+                                "test-throwing-classloader-udf.jar",
+                                udfThrowingClassName,
+                                String.format(GENERATED_THROWING_UDF_CODE, udfThrowingClassName))
                         .toURI()
                         .toString();
     }
@@ -226,6 +241,35 @@ public class FunctionITCase extends StreamingTestBase {
         tEnv().executeSql(ddl1);
         tEnv().executeSql(ddl2);
         tEnv().executeSql(ddl3);
+    }
+
+    @Test
+    public void testClassifyingUserError() throws ExecutionException, InterruptedException {
+        List<Row> sourceData =
+                Arrays.asList(
+                        Row.of(1, "1000", 2),
+                        Row.of(2, "1", 0),
+                        Row.of(3, "2000", 4),
+                        Row.of(1, "2", 2),
+                        Row.of(2, "3000", 3));
+
+        TestCollectionTableFactory.reset();
+        TestCollectionTableFactory.initData(sourceData);
+
+        String sourceDDL =
+                "create table t1(a int, b varchar, c int) with ('connector' = 'COLLECTION')";
+        String sinkDDL =
+                "create table t2(a int, b varchar, c int) with ('connector' = 'COLLECTION')";
+
+        String query = "select t1.a, t1.b, t1.a / t1.c as d from t1";
+
+        tEnv().executeSql(sourceDDL);
+        tEnv().executeSql(sinkDDL);
+        tEnv().executeSql(query);
+        try {
+            tableQuery.executeInsert("t2").await();
+        } catch (Exception e) {
+        }
     }
 
     @Test
@@ -554,6 +598,21 @@ public class FunctionITCase extends StreamingTestBase {
         assertThat(actualRows).isEqualTo(Arrays.asList(Row.of("hello")));
 
         tEnv().executeSql("drop temporary function lowerUdf");
+    }
+
+    @Test
+    public void testThrowingFunctionJar() {
+        String functionDDL =
+                String.format(
+                        "create temporary function throwingUDF as '%s' using jar '%s'",
+                        udfThrowingClassName, throwingJarPath);
+        tEnv().executeSql(functionDDL);
+
+        TableResult tableResult = tEnv().executeSql("SELECT throwingUDF('HELLO')");
+
+        assertThatThrownBy(() -> CollectionUtil.iteratorToList(tableResult.collect()))
+                .isInstanceOf(RuntimeException.class)
+                .hasStackTraceContaining("UDF failure");
     }
 
     /** Test udf class. */

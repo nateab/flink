@@ -26,6 +26,7 @@ import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -39,6 +40,7 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
     private static final long serialVersionUID = -7647332765867297434L;
 
     private final Iterable<ExceptionHistoryEntry> concurrentExceptions;
+    private final Collection<String> failureTags;
 
     /**
      * Creates a {@code RootExceptionHistoryEntry} based on the passed {@link
@@ -62,6 +64,7 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
 
         return createRootExceptionHistoryEntry(
                 snapshot.getRootCause(),
+                snapshot.getFailureTags(),
                 snapshot.getTimestamp(),
                 failingTaskName,
                 taskManagerLocation,
@@ -74,6 +77,7 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
      * will be added to the {@code RootExceptionHistoryEntry}'s concurrently caught failures.
      *
      * @param cause The reason for the failure.
+     * @param failureTags Collection of string tags associated with the failure.
      * @param timestamp The time the failure was caught.
      * @param executions The {@link Execution} instances that shall be analyzed for failures.
      * @return The {@code RootExceptionHistoryEntry} instance.
@@ -82,14 +86,23 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
      *     0}.
      */
     public static RootExceptionHistoryEntry fromGlobalFailure(
-            Throwable cause, long timestamp, Iterable<Execution> executions) {
-        return createRootExceptionHistoryEntry(cause, timestamp, null, null, executions);
+            Throwable cause,
+            Collection<String> failureTags,
+            long timestamp,
+            Iterable<Execution> executions) {
+        return createRootExceptionHistoryEntry(
+                cause, failureTags, timestamp, null, null, executions);
     }
 
     public static RootExceptionHistoryEntry fromExceptionHistoryEntry(
             ExceptionHistoryEntry entry, Iterable<ExceptionHistoryEntry> entries) {
         return new RootExceptionHistoryEntry(
-                entry.getException(), entry.getTimestamp(), null, null, entries);
+                entry.getException(),
+                Collections.emptyList(),
+                entry.getTimestamp(),
+                null,
+                null,
+                entries);
     }
 
     /**
@@ -107,17 +120,22 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
     public static RootExceptionHistoryEntry fromGlobalFailure(ErrorInfo errorInfo) {
         Preconditions.checkNotNull(errorInfo, "errorInfo");
         return fromGlobalFailure(
-                errorInfo.getException(), errorInfo.getTimestamp(), Collections.emptyList());
+                errorInfo.getException(),
+                Collections.emptyList(),
+                errorInfo.getTimestamp(),
+                Collections.emptyList());
     }
 
     private static RootExceptionHistoryEntry createRootExceptionHistoryEntry(
             Throwable cause,
+            Collection<String> failureTags,
             long timestamp,
             @Nullable String failingTaskName,
             @Nullable TaskManagerLocation taskManagerLocation,
             Iterable<Execution> executions) {
         return new RootExceptionHistoryEntry(
                 cause,
+                failureTags,
                 timestamp,
                 failingTaskName,
                 taskManagerLocation,
@@ -134,6 +152,7 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
      * Instantiates a {@code RootExceptionHistoryEntry}.
      *
      * @param cause The reason for the failure.
+     * @param failureTags Tags associated with the failure.
      * @param timestamp The time the failure was caught.
      * @param failingTaskName The name of the task that failed.
      * @param taskManagerLocation The host the task was running on.
@@ -144,15 +163,26 @@ public class RootExceptionHistoryEntry extends ExceptionHistoryEntry {
     @VisibleForTesting
     public RootExceptionHistoryEntry(
             Throwable cause,
+            Collection<String> failureTags,
             long timestamp,
             @Nullable String failingTaskName,
             @Nullable TaskManagerLocation taskManagerLocation,
             Iterable<ExceptionHistoryEntry> concurrentExceptions) {
         super(cause, timestamp, failingTaskName, taskManagerLocation);
         this.concurrentExceptions = concurrentExceptions;
+        this.failureTags = failureTags;
     }
 
     public Iterable<ExceptionHistoryEntry> getConcurrentExceptions() {
         return concurrentExceptions;
+    }
+
+    /**
+     * Returns the tags associated with the failure.
+     *
+     * @return the collection of String tags
+     */
+    public Collection<String> getFailureTags() {
+        return failureTags;
     }
 }

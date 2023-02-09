@@ -2002,6 +2002,12 @@
                   "taskManagerId" : {
                     "type" : "string"
                   },
+                  "exceptionTags" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
                   "concurrentExceptions" : {
                     "type" : "array",
                     "items" : {
@@ -2782,14 +2788,14 @@
     },
     "response" : {
       "type" : "object",
-      "id" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:JobVertexFlameGraph",
+      "id" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:VertexFlameGraph",
       "properties" : {
         "endTimestamp" : {
           "type" : "integer"
         },
         "data" : {
           "type" : "object",
-          "id" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:JobVertexFlameGraph:Node",
+          "id" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:VertexFlameGraph:Node",
           "properties" : {
             "name" : {
               "type" : "string"
@@ -2801,7 +2807,7 @@
               "type" : "array",
               "items" : {
                 "type" : "object",
-                "$ref" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:JobVertexFlameGraph:Node"
+                "$ref" : "urn:jsonschema:org:apache:flink:runtime:webmonitor:threadinfo:VertexFlameGraph:Node"
               }
             }
           }

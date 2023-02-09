@@ -86,6 +86,7 @@ public class RootExceptionHistoryEntryTest extends TestLogger {
                 new FailureHandlingResultSnapshot(
                         rootExecutionVertex.getCurrentExecutionAttempt(),
                         rootException,
+                        Collections.emptyList(),
                         rootTimestamp,
                         Collections.singleton(
                                 concurrentlyFailedExecutionVertex.getCurrentExecutionAttempt()));
@@ -129,6 +130,7 @@ public class RootExceptionHistoryEntryTest extends TestLogger {
         final RootExceptionHistoryEntry actualEntry =
                 RootExceptionHistoryEntry.fromGlobalFailure(
                         rootCause,
+                        Collections.emptyList(),
                         rootTimestamp,
                         StreamSupport.stream(
                                         executionGraph.getAllExecutionVertices().spliterator(),

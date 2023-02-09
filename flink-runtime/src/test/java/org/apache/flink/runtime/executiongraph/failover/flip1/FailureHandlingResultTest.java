@@ -27,6 +27,7 @@ import org.apache.flink.testutils.executor.TestExecutorExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
@@ -57,7 +58,8 @@ class FailureHandlingResultTest {
         Throwable error = new RuntimeException();
         long timestamp = System.currentTimeMillis();
         FailureHandlingResult result =
-                FailureHandlingResult.restartable(execution, error, timestamp, tasks, delay, false);
+                FailureHandlingResult.restartable(
+                        execution, error, Collections.emptyList(), timestamp, tasks, delay, false);
 
         assertThat(result.canRestart()).isTrue();
         assertThat(delay).isEqualTo(result.getRestartDelayMS());
@@ -75,7 +77,8 @@ class FailureHandlingResultTest {
         Throwable error = new Exception("test error");
         long timestamp = System.currentTimeMillis();
         FailureHandlingResult result =
-                FailureHandlingResult.unrecoverable(null, error, timestamp, false);
+                FailureHandlingResult.unrecoverable(
+                        null, error, Collections.emptyList(), timestamp, false);
 
         assertThat(result.canRestart()).isFalse();
         assertThat(result.getError()).isSameAs(error);

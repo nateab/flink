@@ -23,6 +23,7 @@ import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -55,6 +56,9 @@ public class FailureHandlingResult {
     /** Failure reason. {@code @Nullable} because of FLINK-21376. */
     @Nullable private final Throwable error;
 
+    /** Collection of string tags characterizing the failure */
+    private final Collection<String> failureTags;
+
     /** Failure timestamp. */
     private final long timestamp;
 
@@ -67,6 +71,7 @@ public class FailureHandlingResult {
      * @param failedExecution the {@link Execution} that the failure is originating from. Passing
      *     {@code null} as a value indicates that the failure was issued by Flink itself.
      * @param cause the exception that caused this failure.
+     * @param failureTags collection of string tags characterizing the failure.
      * @param timestamp the time the failure was handled.
      * @param verticesToRestart containing task vertices to restart to recover from the failure.
      *     {@code null} indicates that the failure is not restartable.
@@ -75,6 +80,7 @@ public class FailureHandlingResult {
     private FailureHandlingResult(
             @Nullable Execution failedExecution,
             @Nullable Throwable cause,
+            Collection failureTags,
             long timestamp,
             @Nullable Set<ExecutionVertexID> verticesToRestart,
             long restartDelayMS,
@@ -85,6 +91,7 @@ public class FailureHandlingResult {
         this.restartDelayMS = restartDelayMS;
         this.failedExecution = failedExecution;
         this.error = cause;
+        this.failureTags = failureTags;
         this.timestamp = timestamp;
         this.globalFailure = globalFailure;
     }
@@ -95,17 +102,21 @@ public class FailureHandlingResult {
      * @param failedExecution the {@link Execution} that the failure is originating from. Passing
      *     {@code null} as a value indicates that the failure was issued by Flink itself.
      * @param error reason why the failure is not recoverable
+     * @param failureTags collection of tags characterizing the failure as produced by the
+     *     FailureListeners
      * @param timestamp the time the failure was handled.
      */
     private FailureHandlingResult(
             @Nullable Execution failedExecution,
             @Nonnull Throwable error,
+            Collection<String> failureTags,
             long timestamp,
             boolean globalFailure) {
         this.verticesToRestart = null;
         this.restartDelayMS = -1;
         this.failedExecution = failedExecution;
         this.error = checkNotNull(error);
+        this.failureTags = failureTags;
         this.timestamp = timestamp;
         this.globalFailure = globalFailure;
     }
@@ -160,6 +171,15 @@ public class FailureHandlingResult {
     }
 
     /**
+     * Returns the tags associated with the failure.
+     *
+     * @return the collection of String tags
+     */
+    public Collection<String> getFailureTags() {
+        return failureTags;
+    }
+
+    /**
      * Returns the time of the failure.
      *
      * @return The timestamp.
@@ -194,6 +214,7 @@ public class FailureHandlingResult {
      * @param failedExecution the {@link Execution} that the failure is originating from. Passing
      *     {@code null} as a value indicates that the failure was issued by Flink itself.
      * @param cause The reason of the failure.
+     * @param failureTags List of tags characterizing the failure produced by the FailureListeners
      * @param timestamp The time of the failure.
      * @param verticesToRestart containing task vertices to restart to recover from the failure.
      *     {@code null} indicates that the failure is not restartable.
@@ -203,6 +224,7 @@ public class FailureHandlingResult {
     public static FailureHandlingResult restartable(
             @Nullable Execution failedExecution,
             @Nullable Throwable cause,
+            Collection<String> failureTags,
             long timestamp,
             @Nullable Set<ExecutionVertexID> verticesToRestart,
             long restartDelayMS,
@@ -210,6 +232,7 @@ public class FailureHandlingResult {
         return new FailureHandlingResult(
                 failedExecution,
                 cause,
+                failureTags,
                 timestamp,
                 verticesToRestart,
                 restartDelayMS,
@@ -225,14 +248,17 @@ public class FailureHandlingResult {
      * @param failedExecution the {@link Execution} that the failure is originating from. Passing
      *     {@code null} as a value indicates that the failure was issued by Flink itself.
      * @param error reason why the failure is not recoverable
+     * @param failureTags List of tags characterizing the failure produced by the FailureListeners
      * @param timestamp The time of the failure.
      * @return result indicating the failure is not recoverable
      */
     public static FailureHandlingResult unrecoverable(
             @Nullable Execution failedExecution,
             @Nonnull Throwable error,
+            Collection<String> failureTags,
             long timestamp,
             boolean globalFailure) {
-        return new FailureHandlingResult(failedExecution, error, timestamp, globalFailure);
+        return new FailureHandlingResult(
+                failedExecution, error, failureTags, timestamp, globalFailure);
     }
 }

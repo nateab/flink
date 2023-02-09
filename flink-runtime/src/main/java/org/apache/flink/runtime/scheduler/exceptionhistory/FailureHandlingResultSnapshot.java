@@ -43,6 +43,7 @@ public class FailureHandlingResultSnapshot {
 
     @Nullable private final Execution rootCauseExecution;
     private final Throwable rootCause;
+    private final Collection<String> failureTags;
     private final long timestamp;
     private final Set<Execution> concurrentlyFailedExecutions;
 
@@ -79,6 +80,7 @@ public class FailureHandlingResultSnapshot {
         return new FailureHandlingResultSnapshot(
                 rootCauseExecution,
                 ErrorInfo.handleMissingThrowable(failureHandlingResult.getError()),
+                failureHandlingResult.getFailureTags(),
                 failureHandlingResult.getTimestamp(),
                 concurrentlyFailedExecutions);
     }
@@ -87,6 +89,7 @@ public class FailureHandlingResultSnapshot {
     FailureHandlingResultSnapshot(
             @Nullable Execution rootCauseExecution,
             Throwable rootCause,
+            Collection<String> failureTags,
             long timestamp,
             Set<Execution> concurrentlyFailedExecutions) {
         Preconditions.checkArgument(
@@ -95,6 +98,7 @@ public class FailureHandlingResultSnapshot {
                 "The rootCauseExecution should not be part of the concurrentlyFailedExecutions map.");
 
         this.rootCauseExecution = rootCauseExecution;
+        this.failureTags = failureTags;
         this.rootCause = Preconditions.checkNotNull(rootCause);
         this.timestamp = timestamp;
         this.concurrentlyFailedExecutions =
@@ -118,6 +122,15 @@ public class FailureHandlingResultSnapshot {
      */
     public Throwable getRootCause() {
         return rootCause;
+    }
+
+    /**
+     * Returns the tags associated with the failure.
+     *
+     * @return the collection of String tags
+     */
+    public Collection<String> getFailureTags() {
+        return failureTags;
     }
 
     /**

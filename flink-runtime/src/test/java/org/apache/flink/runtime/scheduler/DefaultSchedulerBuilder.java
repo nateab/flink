@@ -22,6 +22,7 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.BatchExecutionOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions.HybridPartitionDataConsumeConstraint;
+import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.runtime.blob.BlobWriter;
 import org.apache.flink.runtime.blob.VoidBlobWriter;
 import org.apache.flink.runtime.blocklist.BlocklistOperations;
@@ -63,6 +64,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
@@ -102,6 +105,7 @@ public class DefaultSchedulerBuilder {
     private ExecutionSlotAllocatorFactory executionSlotAllocatorFactory =
             new TestExecutionSlotAllocatorFactory();
     private JobStatusListener jobStatusListener = (ignoredA, ignoredB, ignoredC) -> {};
+    private Set<FailureListener> failureListeners = new HashSet<>();
     private ExecutionDeployer.Factory executionDeployerFactory =
             new DefaultExecutionDeployer.Factory();
     private VertexParallelismAndInputInfosDecider vertexParallelismAndInputInfosDecider =
@@ -280,6 +284,12 @@ public class DefaultSchedulerBuilder {
         return this;
     }
 
+    public DefaultSchedulerBuilder setExceptionClassifierFactory(
+            Set<FailureListener> failureListeners) {
+        this.failureListeners = failureListeners;
+        return this;
+    }
+
     public DefaultScheduler build() throws Exception {
         return new DefaultScheduler(
                 log,
@@ -301,6 +311,7 @@ public class DefaultSchedulerBuilder {
                 System.currentTimeMillis(),
                 mainThreadExecutor,
                 jobStatusListener,
+                failureListeners,
                 createExecutionGraphFactory(false),
                 shuffleMaster,
                 rpcTimeout,
@@ -329,6 +340,7 @@ public class DefaultSchedulerBuilder {
                 System.currentTimeMillis(),
                 mainThreadExecutor,
                 jobStatusListener,
+                failureListeners,
                 createExecutionGraphFactory(true),
                 shuffleMaster,
                 rpcTimeout,
@@ -360,6 +372,7 @@ public class DefaultSchedulerBuilder {
                 System.currentTimeMillis(),
                 mainThreadExecutor,
                 jobStatusListener,
+                failureListeners,
                 createExecutionGraphFactory(true, new SpeculativeExecutionJobVertex.Factory()),
                 shuffleMaster,
                 rpcTimeout,

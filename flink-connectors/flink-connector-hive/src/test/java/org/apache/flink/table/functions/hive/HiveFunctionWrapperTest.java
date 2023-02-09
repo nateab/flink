@@ -19,6 +19,7 @@
 package org.apache.flink.table.functions.hive;
 
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.table.functions.ScalarFunction;
 import org.apache.flink.util.FlinkUserCodeClassLoaders;
 import org.apache.flink.util.UserClassLoaderJarTestUtils;
@@ -87,5 +88,20 @@ public class HiveFunctionWrapperTest {
                 new HiveFunctionWrapper<>(udfClass, udf);
         ScalarFunction deserializedUdf = functionWrapper1.createFunction();
         assertThat(deserializedUdf.getClass().getName()).isEqualTo(udfClassName);
+    }
+
+    @Test
+    public void testIsUserCodeClassLoader() throws Exception {
+        ClassLoader userClassLoader =
+                FlinkUserCodeClassLoaders.create(
+                        new URL[]{udfJar.toURI().toURL()},
+                        getClass().getClassLoader(),
+                        new Configuration());
+
+        Class<?> systemClass = userClassLoader.loadClass(FailureListener.class.getName());
+        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(systemClass.getClassLoader())).isFalse();
+
+        Class<?> userClass = userClassLoader.loadClass(udfClassName);
+        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(userClass.getClassLoader())).isTrue();
     }
 }

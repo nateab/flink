@@ -126,6 +126,19 @@ public class FlinkUserCodeClassLoaders {
     }
 
     /**
+     *
+     * @param classLoader the clasLoader to check
+     * @return true when class is loaded from user artifacts, false otherwise
+     */
+    @Internal
+    public static boolean isUserCodeClassLoader(ClassLoader classLoader) {
+        return classLoader instanceof ChildFirstClassLoader ||
+                classLoader instanceof ParentFirstClassLoader ||
+                classLoader instanceof SafetyNetWrapperClassLoader;
+    }
+
+
+    /**
      * Regular URLClassLoader that first loads from the parent and only after that from the URLs.
      */
     @Internal

@@ -41,6 +41,7 @@
             <th nzWidth="60px"></th>
             <th>Time</th>
             <th>Exception</th>
+            <th>ExceptionType</th>
             <th>Task Name</th>
             <th>Location</th>
           </tr>
@@ -53,6 +54,7 @@
               <td>
                 <div class="name">{{ item.selected.exceptionName }}</div>
               </td>
+              <td>{{ item.exceptionTags }}</td>
               <td class="select-td">
                 <nz-select
                   class="exception-select"

@@ -297,16 +297,29 @@ public class JobExceptionsInfoWithHistory extends JobExceptionsInfo implements R
     public static class RootExceptionInfo extends ExceptionInfo {
 
         public static final String FIELD_NAME_CONCURRENT_EXCEPTIONS = "concurrentExceptions";
+        public static final String FIELD_NAME_EXCEPTION_TAGS = "exceptionTags";
 
         @JsonProperty(FIELD_NAME_CONCURRENT_EXCEPTIONS)
         private final Collection<ExceptionInfo> concurrentExceptions;
+
+        @JsonProperty(FIELD_NAME_EXCEPTION_TAGS)
+        private final Collection<String> failureTags;
 
         public RootExceptionInfo(
                 String exceptionName,
                 String stacktrace,
                 long timestamp,
+                Collection<String> failureTags,
                 Collection<ExceptionInfo> concurrentExceptions) {
-            this(exceptionName, stacktrace, timestamp, null, null, null, concurrentExceptions);
+            this(
+                    exceptionName,
+                    stacktrace,
+                    timestamp,
+                    null,
+                    null,
+                    null,
+                    failureTags,
+                    concurrentExceptions);
         }
 
         @JsonCreator
@@ -317,15 +330,22 @@ public class JobExceptionsInfoWithHistory extends JobExceptionsInfo implements R
                 @JsonProperty(FIELD_NAME_TASK_NAME) @Nullable String taskName,
                 @JsonProperty(FIELD_NAME_LOCATION) @Nullable String location,
                 @JsonProperty(FIELD_NAME_TASK_MANAGER_ID) @Nullable String taskManagerId,
+                @JsonProperty(FIELD_NAME_EXCEPTION_TAGS) Collection<String> failureTags,
                 @JsonProperty(FIELD_NAME_CONCURRENT_EXCEPTIONS)
                         Collection<ExceptionInfo> concurrentExceptions) {
             super(exceptionName, stacktrace, timestamp, taskName, location, taskManagerId);
             this.concurrentExceptions = concurrentExceptions;
+            this.failureTags = failureTags;
         }
 
         @JsonIgnore
         public Collection<ExceptionInfo> getConcurrentExceptions() {
             return concurrentExceptions;
+        }
+
+        @JsonIgnore
+        public Collection<String> getFailureTags() {
+            return failureTags;
         }
 
         // hashCode and equals are necessary for the test classes deriving from
@@ -351,6 +371,7 @@ public class JobExceptionsInfoWithHistory extends JobExceptionsInfo implements R
         public String toString() {
             return new StringJoiner(", ", RootExceptionInfo.class.getSimpleName() + "[", "]")
                     .add("exceptionName='" + getExceptionName() + "'")
+                    .add("exceptionTags='" + getFailureTags() + "'")
                     .add("stacktrace='" + getStacktrace() + "'")
                     .add("timestamp=" + getTimestamp())
                     .add("taskName='" + getTaskName() + "'")

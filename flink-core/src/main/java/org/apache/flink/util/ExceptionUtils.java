@@ -719,6 +719,29 @@ public final class ExceptionUtils {
         }
     }
 
+    /**
+     * Use reflection to return the class on the top of the Throwable stackTrace by calling
+     * Class.forName with the provided classLoader.
+     *
+     * @param throwable
+     * @param classLoader
+     *
+     * @return Optionally the class at the top of the stackTrace
+     */
+    public static Optional<Class> findClassFromStackTraceTop(
+            Throwable throwable,
+            ClassLoader classLoader) {
+        for (StackTraceElement currElement : throwable.getStackTrace()) {
+            try {
+                Class topClass = Class.forName(currElement.getClassName(), false, classLoader);
+                return Optional.of(topClass);
+            } catch (ClassNotFoundException ex) {
+                // continue
+            }
+        }
+        return Optional.empty();
+    }
+
     // ------------------------------------------------------------------------
 
     /** Private constructor to prevent instantiation. */
