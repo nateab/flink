@@ -8,3 +8,8 @@ github:
   repo_name: confluentinc/flink
 semaphore:
   enable: true
+  schedulers:
+    - name: Sync Apache Flink Branches
+      branch: master
+      at: "*/15 * * * *"
+      pipeline_file: .semaphore/apache-flink-sync.yml
