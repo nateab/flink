@@ -16,8 +16,11 @@ global_job_config:
       - . vault-sem-get-secret ssh_config
       - . vault-sem-get-secret gitconfig
 blocks:
-  - name: Sync Branches
-    commands:
-      - checkout
-      - tools/ci/apache_flink_sync.sh false
+  - name: Sync Apache Branches
+    task:
+      jobs: 
+        - name: Sync Apache Branches
+          commands:
+            - checkout
+            - tools/ci/apache_flink_sync.sh false
 
