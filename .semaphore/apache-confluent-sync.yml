@@ -22,4 +22,6 @@ blocks:
         - name: Sync Apache Branches
           commands:
             - checkout
+            - git remote set-branches origin '*'
+            - git fetch --unshallow
             - tools/ci/apache_confluent_sync.sh false

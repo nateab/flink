@@ -6,13 +6,13 @@ DRY_RUN=${1:-true}
 
 echo DRYRUN: $DRY_RUN
 
-RELEASE_BRANCHES=`git branch -a | grep 'origin/release.*-confluent$' | sort -V -r | head -n 5`
+RELEASE_BRANCHES=$(git branch -a | grep 'origin/release.*-confluent$' | sort -V -r | head -n 5)
 MASTER_BRANCH="remotes/origin/master"
 TARGETS="$RELEASE_BRANCHES $MASTER_BRANCH"
 echo $TARGETS
 
 for TARGET in $TARGETS ; do
-  CONFLUENT_SYNC_BRANCH=`echo $TARGET | rev | cut -d/ -f1 | rev`
+  CONFLUENT_SYNC_BRANCH=$(echo $TARGET | rev | cut -d/ -f1 | rev)
   APACHE_SYNC_BRANCH=apache-${CONFLUENT_SYNC_BRANCH%"-confluent"}
   echo "Syncing Branches: $APACHE_SYNC_BRANCH to $CONFLUENT_SYNC_BRANCH"
   git fetch origin $APACHE_SYNC_BRANCH
