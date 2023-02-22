@@ -13,3 +13,7 @@ semaphore:
       branch: master
       at: "*/15 * * * *"
       pipeline_file: .semaphore/apache-flink-sync.yml
+    - name: Sync Apache to Confluent Branches
+      branch: master
+      at: "0 8 * * MON"
+      pipeline_file: .semaphore/apache-confluent-sync.yml
