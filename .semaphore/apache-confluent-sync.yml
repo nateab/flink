@@ -24,4 +24,5 @@ blocks:
             - checkout
             - git remote set-branches origin '*'
             - git fetch --unshallow
+            - make github-cli-auth
             - tools/ci/apache_confluent_sync.sh false
