@@ -135,7 +135,7 @@ endif
 BRANCH_NAME ?= $(shell git rev-parse --abbrev-ref HEAD || true)
 # Set RELEASE_BRANCH if we're on master or vN.N.x
 # special case for ce-kafka: v0.NNNN.x-N.N.N-ce-SNAPSHOT, v0.NNNN.x-N.N.N-N-ce
-RELEASE_BRANCH := $(shell echo $(BRANCH_NAME) | grep -E '^($(MASTER_BRANCH)|v[0-9]+\.[0-9]+\.x(-[0-9]+\.[0-9]+\.[0-9](-[0-9])?(-ce)?(-SNAPSHOT)?)?)$$')
+RELEASE_BRANCH := $(shell echo $(BRANCH_NAME) | grep -E '^($(MASTER_BRANCH)|v[0-9]+\.[0-9]+\.x(-[0-9]+\.[0-9]+\.[0-9](-[0-9])?(-ce)?(-SNAPSHOT)?)?)$$|^release-\d+\.\d+-confluent$$')
 # assume the remote name is origin by default
 GIT_REMOTE_NAME ?= origin
 

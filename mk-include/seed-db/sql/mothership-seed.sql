@@ -313,7 +313,12 @@ CREATE TABLE physical_cluster (
     multitenant_oauth_superuser_disabled bool DEFAULT false NOT NULL,
     provider jsonb DEFAULT '{}'::jsonb,
     resource_profile jsonb,
-    routing_scheme character varying(32) DEFAULT 'V3' NOT NULL
+    routing_scheme character varying(32) DEFAULT 'V3' NOT NULL,
+    -- V2 physical cluster API support below -- 
+    config_metadata jsonb DEFAULT '{}'::jsonb,
+    custom_resource_type text DEFAULT '' not null,
+    custom_resource jsonb DEFAULT '{}'::jsonb,
+    etag text DEFAULT '' not null
 );
 
 
@@ -322,6 +327,26 @@ ALTER TABLE physical_cluster OWNER TO caas;
 ALTER TABLE deployment.physical_cluster ADD CONSTRAINT "fk-physical_cluster-network_isolation_domain" FOREIGN KEY ("network_isolation_domain_id") REFERENCES deployment.network_isolation_domain ("id") NOT VALID;
 
 ALTER TABLE deployment.physical_cluster VALIDATE CONSTRAINT "fk-physical_cluster-network_isolation_domain";
+
+CREATE FUNCTION physical_cluster_updated() RETURNS TRIGGER
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.modified := now();
+  NEW.etag := md5(NEW::text)::text;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trigger_physical_cluster_updated
+    BEFORE UPDATE ON physical_cluster
+    FOR EACH ROW
+    EXECUTE PROCEDURE physical_cluster_updated();
+
+CREATE TRIGGER trigger_physical_cluster_created  -- we want to set the etag on INSERT too. Might as well call this func
+    BEFORE INSERT ON physical_cluster
+    FOR EACH ROW
+    EXECUTE PROCEDURE physical_cluster_updated();
 
 
 --
@@ -1228,7 +1253,7 @@ CREATE TABLE deployment.api_key_v2_internal_client (
     client_type text NOT NULL
 );
 
-CREATE INDEX api_key_v2_internal_client_api_key_idx ON deployment.api_key_v2_internal_client USING btree (api_key);
+CREATE UNIQUE INDEX api_key_v2_internal_client_api_key_idx ON deployment.api_key_v2_internal_client USING btree (api_key);
 CREATE INDEX api_key_v2_internal_client_client_type_idx ON deployment.api_key_v2_internal_client USING btree (client_type);
 
 ALTER TABLE ONLY deployment.api_key_v2_internal_client
@@ -3773,7 +3798,7 @@ CREATE TABLE cloud_growth.activation_status_cluster
     first_usage_active_1tb_date     timestamp without time zone,                        -- the initial date this cluster was first labeled as usage_active_1tb
     first_usage_active_10tb_date    timestamp without time zone,                        -- the initial date this cluster was first labeled as usage_active_10tb
     CONSTRAINT pk_activation_status_cluster PRIMARY KEY (id, compute_date)
-) PARTITION BY RANGE (compute_date);
+);
 CREATE INDEX IF NOT EXISTS activation_status_cluster_compute_date_cluster_id_idx ON cloud_growth.activation_status_cluster USING btree (compute_date DESC, cluster_id);
 CREATE INDEX IF NOT EXISTS activation_status_cluster_compute_date_org_id_cluster_id_idx ON cloud_growth.activation_status_cluster USING btree (compute_date DESC, org_id, cluster_id);
 ALTER TABLE cloud_growth.activation_status_cluster OWNER TO cc_activation_status;

@@ -7,8 +7,11 @@ init-ci: $$(INIT_CI_TARGETS)
 
 RELEASE_PRECOMMIT ?=
 RELEASE_POSTCOMMIT ?= $(RELEASE_TARGETS) # set to RELEASE_TARGETS for backwards compatibility
+ifeq ($(MAVEN_NANO_VERSION), true)
+RELEASE_TARGETS := $(RELEASE_PRECOMMIT) tag-release $(RELEASE_POSTCOMMIT)
+else
 RELEASE_TARGETS := $(RELEASE_PRECOMMIT) get-release-image commit-release tag-release $(RELEASE_POSTCOMMIT)
-
+endif
 .PHONY: release
 ## Release Project.  See show-args to see what will run
 release: $$(RELEASE_TARGETS)

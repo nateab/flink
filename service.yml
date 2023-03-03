@@ -8,6 +8,7 @@ github:
   repo_name: confluentinc/flink
 semaphore:
   enable: true
+  triggers: ['branches', 'pull_requests']
   branches:
     - master
     - main

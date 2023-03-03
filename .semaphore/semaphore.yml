@@ -143,3 +143,19 @@ blocks:
             - sem-version go 1.18.1
             - checkout
             - ./tools/ci/docs.sh
+
+  - name: release
+    dependencies: [tests, e2e-tests, docs-check]
+    task:
+      jobs:
+        - name: release
+          commands:
+            - checkout
+            - . vault-sem-get-secret maven-settings
+            - . vault-sem-get-secret ci-reporting
+            - . vault-sem-get-secret ssh_id_rsa
+            - . vault-sem-get-secret gitconfig
+            - git fetch --all --tags
+            - cache restore "$CACHE_PREFIX"-maven-cache
+            - make mvn-bump-nanoversion
+            - make flink-deploy

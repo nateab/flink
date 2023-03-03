@@ -131,11 +131,14 @@ ifeq ($(CI_TEST),true)
 endif
 
 .PHONY: tag-release
+ifeq ($(MAVEN_NANO_VERSION), true)
+tag-release: mvn-push-nanoversion-tag
+else
 tag-release:
 	$(GIT) tag $(BUMPED_VERSION)
 	$(GIT) push $(GIT_REMOTE_NAME) $(BUMPED_VERSION)
-	# version bump commit may fail if there are queueing builds
 	$(GIT) push $(GIT_REMOTE_NAME) $(RELEASE_BRANCH) || true
+endif
 
 .PHONY: get-release-image
 get-release-image:

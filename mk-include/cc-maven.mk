@@ -7,6 +7,9 @@ RELEASE_POSTCOMMIT += mvn-deploy
 MAVEN_RETRY_COUNT = 3
 MAVEN_RETRY_OPTS = -Dmaven.wagon.http.retryHandler.count=$(MAVEN_RETRY_COUNT)
 MAVEN_ARGS ?= --no-transfer-progress
+MAVEN_ADDITIONAL_ARGS ?=
+MAVEN_ARGS += $(MAVEN_ADDITIONAL_ARGS)
+MAVEN_NANO_VERSION ?= false
 ifeq ($(CI),true)
 MAVEN_ARGS += --batch-mode
 # Put local maven repo inside CI_BIN to leverage caching done in cc-semaphore.mk
@@ -53,7 +56,7 @@ endif
 
 .PHONY: mvn-verify
 mvn-verify:
-	$(MVN) verify $(MAVEN_VERIFY_OPTS)
+	$(MVN) $(MAVEN_VERIFY_OPTS) verify 
 
 .PHONY: mvn-clean
 mvn-clean:
@@ -66,11 +69,15 @@ mvn-deploy:
 
 # Set the version in pom.xml to the bumped version
 .PHONY: mvn-set-bumped-version
+ifeq ($(MAVEN_NANO_VERSION),false)
 mvn-set-bumped-version:
 	$(MVN) versions:set \
 		-DnewVersion=$(BUMPED_CLEAN_VERSION) \
 		-DgenerateBackupPoms=false
 	$(GIT) add --verbose $(shell find . -name pom.xml -maxdepth 2)
+else
+mvn-set-bumped-version: mvn-bump-nanoversion
+endif
 
 # Other projects have a superstitious dependency on docker-pull-base here
 # instead of letting `docker build` just automatically pull the base image.
@@ -101,5 +108,25 @@ endif
 show-maven:
 	@echo "MVN:                     $(MVN)"
 	@echo "MAVEN_OPTS:              $(MAVEN_OPTS)"
+	@echo "MAVEN_ARGS:              $(MAVEN_ARGS)"
 	@echo "MAVEN_INSTALL_PROFILES:  $(MAVEN_INSTALL_PROFILES)"
 	@echo "MAVEN_DEPLOY_REPO_URL: 	$(MAVEN_DEPLOY_REPO_URL)"
+
+.PHONY: mvn-nanoversion-pip-deps
+mvn-nanoversion-pip-deps:
+	pip3 show confluent-ci-tools > /dev/null || pip3 install -U confluent-ci-tools
+
+ifeq ($(CI),true)
+.PHONY: mvn-bump-nanoversion
+## use ci-tools to bump nanoversion
+mvn-bump-nanoversion: mvn-nanoversion-pip-deps
+	ci-update-version . $(SEMAPHORE_GIT_DIR) --no-update-dependency-versions --update-project-version
+
+.PHONY: mvn-push-nanoversion-tag
+## use ci-tools to push the newest nanoversion tag
+mvn-push-nanoversion-tag: mvn-nanoversion-pip-deps
+	ci-push-tag . $(SEMAPHORE_GIT_DIR)
+
+.PHONY: mvn-bump-nanoversion-and-push-tag
+mvn-bump-nanoversion-and-push-tag: mvn-bump-nanoversion mvn-push-nanoversion-tag
+endif

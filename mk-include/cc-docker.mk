@@ -17,6 +17,8 @@ DOCKER_FILE_PATH ?= .
 # Use this variable to skip pushing docker image to release if it exists already
 DOCKER_PUSH_RELEASE_SKIP_IF_PRESENT ?= false
 
+DOCKER_APPEND_ARCH_SUFFIX  ?= false
+
 # Use this variable to specify docker build options
 DOCKER_BUILD_OPTIONS ?=
 ifeq ($(CI),true)
@@ -74,6 +76,11 @@ ARCH ?= amd64
 ARCH_SUFFIX = -$(ARCH)
 else
 ARCH_SUFFIX = $(empty)
+endif
+
+ifeq ($(DOCKER_APPEND_ARCH_SUFFIX), true)
+ARCH ?= amd64
+ARCH_SUFFIX = -$(ARCH)
 endif
 
 # Image Name
@@ -498,4 +505,3 @@ ifneq ($(RELEASE_BRANCH),$(_empty))
 		| cat | sed '/^2/q ; /^\([1,3,4,5,6,7,8,9]\)/{s//Error, please link this log in slack channel image-signing-service-help\n\1/ ; q1}'
 endif
 endif
-

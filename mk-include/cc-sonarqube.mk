@@ -19,16 +19,12 @@ sonar-scan:
 
 .PHONY: sonarqube-gate-pip-deps
 sonarqube-gate-pip-deps:
-ifeq ($(shell pip show confluent-ci-tools 2> /dev/null),)
-	@echo "ci-tools already installed"
-else
-	pip3 install -U confluent-ci-tools
-endif
+	pip3 show confluent-ci-tools > /dev/null || pip3 install -U confluent-ci-tools
 
 
 .PHONY: sonar-gate
 sonar-gate: sonarqube-gate-pip-deps
-	@sonarqube-gate-coverage \
+	@sonarqube-ci gate \
 		$(SONAR_PROJECT_NAME) \
 		--pr-id $(SEMAPHORE_GIT_PR_NUMBER) \
 		--token $(shell vault kv get -field $(SONAR_AUTH_TOKEN_VAULT_KV) "v1/ci/kv/sonarqube/semaphore") \

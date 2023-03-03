@@ -59,9 +59,13 @@ CLUSTER_ENV ?= ""
 ifeq ($(CI),true)
 # we need ?= to allow overridding HAL_TMPDIR for CPD gating
 HAL_TMPDIR ?= $(shell mktemp -d 2>/dev/null || mktemp -d -t 'halyard')
+GIT_SHA ?= $(SEMAPHORE_GIT_SHA)
+GIT_REPO ?= $(SEMAPHORE_GIT_REPO_SLUG)
 else
 # when we aren't running CI, just put output in a temporary directory
 HAL_TMPDIR ?= .halctl/tmp
+GIT_SHA ?= ""
+GIT_REPO ?= ""
 endif
 # we need := for immediate assignment rather than deferred.
 HAL_TMPDIR := $(HAL_TMPDIR)
@@ -231,7 +235,7 @@ endif
 
 .PHONY: $(HALYARD_SERVICE_FILES:%=set.%)
 $(HALYARD_SERVICE_FILES:%=set.%): $(HOME)/.halctl
-	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(@:set.%=%)
+	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(@:set.%=%) -c $(GIT_SHA) -r $(GIT_REPO)
 	git add $(@:set.%=%)
 	@$(eval env_path := $(shell dirname $(@:set.%=%))/envs/)
 	@if [[ -d $(env_path) ]]; then \
@@ -242,7 +246,7 @@ $(HALYARD_SERVICE_FILES:%=set.%): $(HOME)/.halctl
 $(HALYARD_SERVICE_FILES_ENVS:%=set.%): $(HOME)/.halctl
 	@$(eval fpath := $(word 1,$(subst =, ,$(@:set.%=%))))
 	@$(eval env := $(word 2,$(subst =, ,$(@:set.%=%))))
-	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(fpath) -e $(env)
+	$(HALCTL) release set-file-version -v $(HALYARD_SOURCE_VERSION) -f $(fpath) -e $(env) -c $(GIT_SHA) -r $(GIT_REPO)
 	git add $(fpath)
 	@$(eval env_path := $(shell dirname $(fpath))/envs/)
 	@if [[ -d $(env_path) ]]; then \

@@ -197,6 +197,7 @@ PYFLINK_UDF_RUNNER_BAT = "pyflink-udf-runner.bat"
 
 in_flink_source = os.path.isfile("../flink-java/src/main/java/org/apache/flink/api/java/"
                                  "ExecutionEnvironment.java")
+NANOVERSION_FILE = ".ci/git_tag"
 try:
     if in_flink_source:
 
@@ -206,7 +207,17 @@ try:
             print("Temp path for symlink to parent already exists {0}".format(TEMP_PATH),
                   file=sys.stderr)
             sys.exit(-1)
-        flink_version = VERSION.replace(".dev0", "-SNAPSHOT")
+
+        nanoversion = ""
+        if os.path.isfile(NANOVERSION_FILE):
+            with open(NANOVERSION_FILE, "r") as nv_file:
+                version = nv_file.read()
+            nanoversion = "-" + version.split('-')[-1]
+
+        if nanoversion:
+            flink_version = VERSION.replace(".dev0", nanoversion)
+        else:
+            flink_version = VERSION.replace(".dev0", "-SNAPSHOT")
         FLINK_HOME = os.path.abspath(
             "../flink-dist/target/flink-%s-bin/flink-%s" % (flink_version, flink_version))
         FLINK_ROOT = os.path.abspath("..")
