@@ -1557,6 +1557,8 @@ under the License.
 						<!-- Build files -->
 						<exclude>**/*.iml</exclude>
 						<exclude>flink-quickstart/**/testArtifact/goal.txt</exclude>
+						<exclude>Makefile</exclude>
+						<exclude>mk-include/**</exclude>
 						<!-- Generated content -->
 						<exclude>out/**</exclude>
 						<exclude>**/target/**</exclude>
