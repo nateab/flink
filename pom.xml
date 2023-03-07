@@ -1559,6 +1559,7 @@ under the License.
 						<exclude>flink-quickstart/**/testArtifact/goal.txt</exclude>
 						<exclude>Makefile</exclude>
 						<exclude>mk-include/**</exclude>
+						<exclude>ci-bin/**</exclude>
 						<!-- Generated content -->
 						<exclude>out/**</exclude>
 						<exclude>**/target/**</exclude>
