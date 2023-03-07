@@ -25,6 +25,11 @@ CREATE USER caas;
 CREATE SCHEMA deployment;
 CREATE SCHEMA cc_capacity_service;
 
+CREATE DOMAIN cc_capacity_service.k8s_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.logical_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.physical_cluster_id AS text NOT NULL;
+CREATE DOMAIN cc_capacity_service.network_region_id AS text NOT NULL;
+
 ALTER SCHEMA deployment OWNER TO caas;
 ALTER SCHEMA cc_capacity_service OWNER to caas;
 
@@ -1208,7 +1213,7 @@ CREATE TABLE api_key_v2 (
   modified TIMESTAMP WITHOUT TIME ZONE DEFAULT current_timestamp NOT NULL,
   owner_resource_id TEXT NOT NULL CHECK (owner_resource_id <> ''),
   owner_type TEXT NOT NULL CHECK (owner_type <> ''),
-  owner_id INTEGER NOT NULL CHECK (owner_id > 0),
+  owner_id INTEGER NOT NULL CHECK (owner_id >= 0),
   resource_id TEXT NOT NULL CHECK (resource_id <> ''),
   resource_type TEXT NOT NULL CHECK (resource_type <> ''),
   organization_resource_id TEXT NOT NULL CHECK (organization_resource_id <> ''),

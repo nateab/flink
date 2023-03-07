@@ -109,6 +109,8 @@ else ifeq ($(BUMP),none)
 BUMPED_CLEAN_VERSION := $(word 1,$(split_version)).$(word 2,$(split_version)).$(word 3,$(split_version))
 endif
 
+BUMPED_CLEAN_BASE_VERSION := ${BUMPED_CLEAN_VERSION}
+BUMPED_BASE_VERSION := v${BUMPED_CLEAN_BASE_VERSION}
 BUMPED_CLEAN_VERSION := $(BUMPED_CLEAN_VERSION)$(VERSION_POST)
 BUMPED_VERSION := v$(BUMPED_CLEAN_VERSION)
 
@@ -121,6 +123,8 @@ show-version:
 	@echo version no v: $(VERSION_NO_V)
 	@echo clean version: $(CLEAN_VERSION)
 	@echo version bump: $(BUMP) $(_auto_bump_msg)
+	@echo bumped clean base version: $(BUMPED_CLEAN_BASE_VERSION)
+	@echo bumped base version: $(BUMPED_BASE_VERSION)
 	@echo bumped version: $(BUMPED_VERSION)
 	@echo bumped clean version: $(BUMPED_CLEAN_VERSION)
 	@echo version post append: $(VERSION_POST)

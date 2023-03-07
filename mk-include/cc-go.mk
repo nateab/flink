@@ -7,6 +7,8 @@ GO_BINS ?= main.go=main# format: space seperated list of source.go=output_bin
 GO_OUTDIR ?= bin# default to output bins to bin/
 GO_LDFLAGS ?= -X main.version=$(VERSION)# Setup LD Flags
 GO_EXTRA_FLAGS ?=
+GO_FIPS_ENV_VARS ?=
+GO_FIPS_ENABLE_INPLACE ?= false
 
 GO_VERSION_MAJOR := $(word 1,$(subst ., ,$(GO_VERSION)))
 GO_VERSION_MINOR := $(or $(word 2,$(subst ., ,$(GO_VERSION))),0)
@@ -75,6 +77,14 @@ ifeq ($(CI), true)
 GO_EXTRA_LINT += _go-golangci-lint-ci
 else
 GO_EXTRA_LINT += go-golangci-lint
+endif
+
+# FIPS
+ifeq ($(GO_FIPS_ENABLE_INPLACE),true)
+ifneq (,$(call go-version-at-least,1,19))
+GO_FIPS_ENV_VARS = CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+GO_EXPERIMENTS += boringcrypto
+endif
 endif
 
 # flags for confluent-kafka-go-dev / librdkafka on alpine
@@ -234,7 +244,8 @@ fmt:
 build-go: go-bindata $(GO_BINS)
 $(GO_BINS):
 	$(eval split := $(subst =, ,$(@)))
-	$(GO) build $(GO_USE_VENDOR) $(GO_MOD_DOWNLOAD_MODE_FLAG) -o $(GO_OUTDIR)/$(word 2,$(split)) -ldflags "$(GO_LDFLAGS)" $(GO_EXTRA_FLAGS) $(word 1,$(split))
+	$(if $(GO_EXPERIMENTS),GOEXPERIMENT=$(subst $(_space),$(_comma),$(GO_EXPERIMENTS))) \
+	$(GO_FIPS_ENV_VARS) $(GO) build $(GO_USE_VENDOR) $(GO_MOD_DOWNLOAD_MODE_FLAG) -o $(GO_OUTDIR)/$(word 2,$(split)) -ldflags "$(GO_LDFLAGS)" $(GO_EXTRA_FLAGS) $(word 1,$(split))
 
 .PHONY: test-go
 ## Run Go Tests and Vet code
