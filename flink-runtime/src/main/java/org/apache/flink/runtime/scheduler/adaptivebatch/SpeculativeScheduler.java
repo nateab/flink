@@ -100,6 +100,7 @@ public class SpeculativeScheduler extends AdaptiveBatchScheduler
     private long numSlowExecutionVertices;
 
     private final Counter numEffectiveSpeculativeExecutionsCounter;
+    private final Executor ioExecutor;
 
     public SpeculativeScheduler(
             final Logger log,
@@ -176,6 +177,8 @@ public class SpeculativeScheduler extends AdaptiveBatchScheduler
         this.slowTaskDetector = new ExecutionTimeBasedSlowTaskDetector(jobMasterConfiguration);
 
         this.numEffectiveSpeculativeExecutionsCounter = new SimpleCounter();
+
+        this.ioExecutor = ioExecutor;
     }
 
     @Override
@@ -282,17 +285,21 @@ public class SpeculativeScheduler extends AdaptiveBatchScheduler
             final Execution failedExecution, @Nullable final Throwable error) {
         executionSlotAllocator.cancel(failedExecution.getAttemptId());
 
-        final FailureHandlingResult failureHandlingResult =
+        final CompletableFuture<FailureHandlingResult> failureHandlingResultFuture =
                 recordTaskFailure(failedExecution, error);
-        if (failureHandlingResult.canRestart()) {
-            archiveFromFailureHandlingResult(
-                    createFailureHandlingResultSnapshot(failureHandlingResult));
-        } else {
-            failJob(
-                    error,
-                    failureHandlingResult.getFailureTags(),
-                    failureHandlingResult.getTimestamp());
-        }
+        failureHandlingResultFuture.thenAcceptAsync(
+                failureHandlingResult -> {
+                    if (failureHandlingResult.canRestart()) {
+                        archiveFromFailureHandlingResult(
+                                createFailureHandlingResultSnapshot(failureHandlingResult));
+                    } else {
+                        failJob(
+                                error,
+                                failureHandlingResult.getFailureTags(),
+                                failureHandlingResult.getTimestamp());
+                    }
+                },
+                getMainThreadExecutor());
     }
 
     private static boolean isExecutionVertexPossibleToFinish(

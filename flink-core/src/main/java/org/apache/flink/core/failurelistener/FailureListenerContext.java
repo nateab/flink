@@ -22,7 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 
 import javax.annotation.Nullable;
 
-import java.util.Collection;
+import java.util.concurrent.Executor;
 
 /**
  * Context class used by the {@link FailureListener} that including the exception and other
@@ -44,16 +44,6 @@ public interface FailureListenerContext {
     @Nullable
     ClassLoader getUserClassLoader();
 
-    /**
-     * Append tag parameter to the exiting Tag Collection of Strings.
-     *
-     * @param tag String
-     */
-    void addTag(String tag);
-
-    /**
-     * @return The mutable Collection of tags associated with the failure.
-     * Mutability allows removing previously added tags using the returned Collection.
-     * */
-    Collection<String> getTags();
+    /** @return an Executor pool to run async operations that can potentially be IO-heavy. */
+    Executor ioExecutor();
 }

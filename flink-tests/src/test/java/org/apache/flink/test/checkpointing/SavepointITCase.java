@@ -348,9 +348,10 @@ public class SavepointITCase extends TestLogger {
                                     && throwable
                                             .getMessage()
                                             .startsWith("A savepoint has been created at: "));
-            assertThat(
-                    client.getJobStatus(jobGraph.getJobID()).get(),
-                    either(is(JobStatus.FAILED)).or(is(JobStatus.FAILING)));
+
+            CommonTestUtils.waitUntilCondition(
+                    () -> client.getJobStatus(jobGraph.getJobID()).get()
+                            == JobStatus.FAILED);
         } finally {
             cluster.after();
         }

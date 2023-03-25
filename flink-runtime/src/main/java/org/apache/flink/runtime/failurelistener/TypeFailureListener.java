@@ -17,14 +17,19 @@
 
 package org.apache.flink.runtime.failurelistener;
 
-import static org.apache.flink.util.ExceptionUtils.findClassFromStackTraceTop;
-
-import java.util.Optional;
-
 import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.core.failurelistener.FailureListenerContext;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkUserCodeClassLoaders;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
+import static org.apache.flink.util.ExceptionUtils.findClassFromStackTraceTop;
 
 /**
  * Type implementation of {@link FailureListener} that aims to categorize failures to USER or SYSTEM
@@ -32,24 +37,42 @@ import org.apache.flink.util.FlinkUserCodeClassLoaders;
  */
 public class TypeFailureListener implements FailureListener {
 
+    private static final String typeLabelKey = "type_label";
+    private static final Set<String> labelKeys = Collections.singleton(typeLabelKey);
+
     @Override
-    public void onFailure(Throwable cause, FailureListenerContext context) {
-        Throwable err = context.getThrowable();
-        if (ExceptionUtils.isJvmFatalOrOutOfMemoryError(err)) {
-            context.addTag("SYSTEM");
-        }
-        if (ExceptionUtils.findThrowable(err, ArithmeticException.class).isPresent()) {
-            context.addTag("USER");
-        }
-        // User ClassLoader ExceptionFilter for UDFs
-        if (context.getUserClassLoader() != null) {
-            // Class in the top of the stack, from which an exception is thrown, is loaded from user artifacts in a submitted JAR
-            Optional<Class> classOnStackTop = findClassFromStackTraceTop(cause, context.getUserClassLoader());
-            if (classOnStackTop.isPresent() && FlinkUserCodeClassLoaders.isUserCodeClassLoader(classOnStackTop.get()
-                    .getClassLoader())) {
-                context.addTag("UDF+USER");
-            }
-        }
-        context.addTag("UNKNOWN");
+    public Set<String> getOutputKeys() {
+        return labelKeys;
+    }
+
+    @Override
+    public CompletableFuture<Map<String, String>> onFailure(
+            Throwable cause, FailureListenerContext context) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    Map<String, String> labels = new HashMap();
+                    Throwable err = context.getThrowable();
+                    if (ExceptionUtils.isJvmFatalOrOutOfMemoryError(err)) {
+                        labels.put(typeLabelKey, "SYSTEM");
+                    }
+                    if (ExceptionUtils.findThrowable(err, ArithmeticException.class).isPresent()) {
+                        labels.put(typeLabelKey, "USER");
+                    }
+                    // User ClassLoader ExceptionFilter for UDFs
+                    if (context.getUserClassLoader() != null) {
+                        // Class in the top of the stack, from which an exception is thrown, is
+                        // loaded from user artifacts in a submitted JAR
+                        Optional<Class> classOnStackTop =
+                                findClassFromStackTraceTop(cause, context.getUserClassLoader());
+                        if (classOnStackTop.isPresent()
+                                && FlinkUserCodeClassLoaders.isUserCodeClassLoader(
+                                        classOnStackTop.get().getClassLoader())) {
+                            labels.put(typeLabelKey, "UDF_USER");
+                        }
+                    }
+                    labels.put(typeLabelKey, "UNKNOWN");
+                    return labels;
+                },
+                context.ioExecutor());
     }
 }

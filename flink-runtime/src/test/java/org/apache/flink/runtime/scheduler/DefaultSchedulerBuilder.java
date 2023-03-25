@@ -284,12 +284,6 @@ public class DefaultSchedulerBuilder {
         return this;
     }
 
-    public DefaultSchedulerBuilder setExceptionClassifierFactory(
-            Set<FailureListener> failureListeners) {
-        this.failureListeners = failureListeners;
-        return this;
-    }
-
     public DefaultScheduler build() throws Exception {
         return new DefaultScheduler(
                 log,

@@ -21,7 +21,6 @@ package org.apache.flink.table.factories;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.core.testutils.FlinkAssertions;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.Catalog;

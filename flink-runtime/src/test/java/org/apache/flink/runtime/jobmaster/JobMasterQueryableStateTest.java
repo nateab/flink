@@ -40,6 +40,7 @@ import org.apache.flink.runtime.rpc.TestingRpcService;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.taskexecutor.TaskExecutorGateway;
 import org.apache.flink.runtime.taskexecutor.TestingTaskExecutorGatewayBuilder;
+import org.apache.flink.runtime.testutils.CommonTestUtils;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.TestLogger;
 
@@ -56,8 +57,6 @@ import java.util.concurrent.ExecutionException;
 
 import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.hamcrest.CoreMatchers.either;
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -299,9 +298,10 @@ public class JobMasterQueryableStateTest extends TestLogger {
                         ExceptionUtils.findThrowableWithMessage(e, "Registration name clash")
                                 .isPresent());
 
-                assertThat(
-                        jobMasterGateway.requestJobStatus(testingTimeout).get(),
-                        either(is(JobStatus.FAILED)).or(is(JobStatus.FAILING)));
+                CommonTestUtils.waitUntilCondition(
+                        () ->
+                                jobMasterGateway.requestJobStatus(testingTimeout).get()
+                                        == JobStatus.FAILING);
             }
         }
     }

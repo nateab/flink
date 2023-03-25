@@ -610,7 +610,6 @@ public class MiniClusterITCase extends TestLogger {
 
         try (final MiniCluster miniCluster = new MiniCluster(cfg)) {
             miniCluster.start();
-            // Simulate OOM error?
             final JobVertex failingJobVertex = new OutOfMemoryInFinalizationJobVertex();
             failingJobVertex.setInvokableClass(NoOpInvokable.class);
             failingJobVertex.setParallelism(parallelism);

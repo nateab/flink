@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
+import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutorServiceAdapter;
 import org.apache.flink.runtime.execution.SuppressRestartsException;
 import org.apache.flink.runtime.executiongraph.Execution;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -69,7 +71,12 @@ class ExecutionFailureHandlerTest {
         backoffTimeStrategy = new TestRestartBackoffTimeStrategy(true, RESTART_DELAY_MS);
         executionFailureHandler =
                 new ExecutionFailureHandler(
-                        schedulingTopology, failoverStrategy, backoffTimeStrategy);
+                        schedulingTopology,
+                        failoverStrategy,
+                        backoffTimeStrategy,
+                        ComponentMainThreadExecutorServiceAdapter.forSingleThreadExecutor(
+                                EXECUTOR_RESOURCE.getExecutor()),
+                        EXECUTOR_RESOURCE.getExecutor());
     }
 
     /** Tests the case that task restarting is accepted. */
@@ -84,7 +91,7 @@ class ExecutionFailureHandlerTest {
         long timestamp = System.currentTimeMillis();
         // trigger a task failure
         final FailureHandlingResult result =
-                executionFailureHandler.getFailureHandlingResult(execution, cause, timestamp);
+                executionFailureHandler.getFailureHandlingResult(execution, cause, timestamp).get();
 
         // verify results
         assertThat(result.canRestart()).isTrue();
@@ -108,7 +115,7 @@ class ExecutionFailureHandlerTest {
         final Throwable error = new Exception("expected test failure");
         final long timestamp = System.currentTimeMillis();
         final FailureHandlingResult result =
-                executionFailureHandler.getFailureHandlingResult(execution, error, timestamp);
+                executionFailureHandler.getFailureHandlingResult(execution, error, timestamp).get();
 
         // verify results
         assertThat(result.canRestart()).isFalse();
@@ -139,7 +146,7 @@ class ExecutionFailureHandlerTest {
                 new Exception(new SuppressRestartsException(new Exception("test failure")));
         final long timestamp = System.currentTimeMillis();
         final FailureHandlingResult result =
-                executionFailureHandler.getFailureHandlingResult(execution, error, timestamp);
+                executionFailureHandler.getFailureHandlingResult(execution, error, timestamp).get();
 
         // verify results
         assertThat(result.canRestart()).isFalse();
@@ -180,11 +187,11 @@ class ExecutionFailureHandlerTest {
     }
 
     @Test
-    void testGlobalFailureHandling() {
+    void testGlobalFailureHandling() throws ExecutionException, InterruptedException {
         final Throwable error = new Exception("Expected test failure");
         final long timestamp = System.currentTimeMillis();
         final FailureHandlingResult result =
-                executionFailureHandler.getGlobalFailureHandlingResult(error, timestamp);
+                executionFailureHandler.getGlobalFailureHandlingResult(error, timestamp).get();
 
         assertThat(result.getVerticesToRestart())
                 .isEqualTo(

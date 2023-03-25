@@ -18,6 +18,8 @@
 
 package org.apache.flink.runtime.jobmaster;
 
+import java.util.Collections;
+
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.api.common.functions.AggregateFunction;
@@ -346,13 +348,18 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId>
 
         this.jobManagerJobMetricGroup = jobMetricGroupFactory.create(jobGraph);
         this.jobStatusListener = new JobManagerJobStatusListener();
-        // Initialization through plugin factory
-        Set<FailureListener> failureListeners =
-                FailureListenerUtils.getFailureListeners(
-                        jobMasterConfiguration.getConfiguration(),
-                        jid,
-                        jobName,
-                        jobManagerJobMetricGroup);
+        Set<FailureListener> failureListeners = Collections.emptySet();
+        if (jobMasterConfiguration
+                .getConfiguration()
+                .getBoolean(JobManagerOptions.ENABLE_FAILURELISTENER_PLUGINS)) {
+            // Initialization through plugin factory
+            failureListeners =
+                    FailureListenerUtils.getFailureListeners(
+                            jobMasterConfiguration.getConfiguration(),
+                            jid,
+                            jobName,
+                            jobManagerJobMetricGroup);
+        }
         this.schedulerNG =
                 createScheduler(
                         slotPoolServiceSchedulerFactory,

@@ -17,9 +17,12 @@
 
 package org.apache.flink.runtime.executiongraph.failover.flip1;
 
+import java.util.Collections;
+
 import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.core.failurelistener.FailureListenerContext;
 import org.apache.flink.runtime.JobException;
+import org.apache.flink.runtime.concurrent.ComponentMainThreadExecutor;
 import org.apache.flink.runtime.executiongraph.Execution;
 import org.apache.flink.runtime.failurelistener.FailureListenerContextImpl;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
@@ -28,16 +31,23 @@ import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 import org.apache.flink.runtime.throwable.ThrowableClassifier;
 import org.apache.flink.runtime.throwable.ThrowableType;
 import org.apache.flink.util.IterableUtils;
+import org.apache.flink.util.concurrent.FutureUtils;
+import org.apache.flink.util.concurrent.FutureUtils.ConjunctFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -61,7 +71,12 @@ public class ExecutionFailureHandler {
     /** Number of all restarts happened since this job is submitted. */
     private long numberOfRestarts;
 
+    private ConjunctFuture<Collection<Map<String, String>>> failureFuturesCollection;
+    private int currentFailureAttempt;
     private final Set<FailureListener> failureListeners;
+    private final ComponentMainThreadExecutor mainThreadExecutor;
+
+    private final Executor ioExecutor;
 
     /**
      * Creates the handler to deal with task failures.
@@ -74,11 +89,15 @@ public class ExecutionFailureHandler {
     public ExecutionFailureHandler(
             final SchedulingTopology schedulingTopology,
             final FailoverStrategy failoverStrategy,
-            final RestartBackoffTimeStrategy restartBackoffTimeStrategy) {
+            final RestartBackoffTimeStrategy restartBackoffTimeStrategy,
+            final ComponentMainThreadExecutor mainThreadExecutor,
+            final Executor ioExecutor) {
 
         this.schedulingTopology = checkNotNull(schedulingTopology);
         this.failoverStrategy = checkNotNull(failoverStrategy);
         this.restartBackoffTimeStrategy = checkNotNull(restartBackoffTimeStrategy);
+        this.mainThreadExecutor = mainThreadExecutor;
+        this.ioExecutor = ioExecutor;
         this.failureListeners = new HashSet<>();
     }
 
@@ -91,7 +110,7 @@ public class ExecutionFailureHandler {
      * @param timestamp of the task failure
      * @return result of the failure handling
      */
-    public FailureHandlingResult getFailureHandlingResult(
+    public CompletableFuture<FailureHandlingResult> getFailureHandlingResult(
             Execution failedExecution, Throwable cause, long timestamp) {
         return handleFailure(
                 failedExecution,
@@ -110,7 +129,7 @@ public class ExecutionFailureHandler {
      * @param timestamp of the task failure
      * @return result of the failure handling
      */
-    public FailureHandlingResult getGlobalFailureHandlingResult(
+    public CompletableFuture<FailureHandlingResult> getGlobalFailureHandlingResult(
             final Throwable cause, long timestamp) {
         return handleFailure(
                 null,
@@ -127,66 +146,99 @@ public class ExecutionFailureHandler {
         failureListeners.add(failureListener);
     }
 
-    private FailureHandlingResult handleFailure(
+    private CompletableFuture<FailureHandlingResult> handleFailure(
             @Nullable final Execution failedExecution,
             final Throwable cause,
             long timestamp,
             final Set<ExecutionVertexID> verticesToRestart,
             final boolean globalFailure) {
-        FailureListenerContext cntx = new FailureListenerContextImpl(cause, globalFailure,
-                Optional
-                        .of(failedExecution
-                                .getVertex()
-                                .getExecutionGraphAccessor()
-                                .getUserClassLoader())
-                        .orElse(null));
-        try {
+        /**
+         * When multiple tasks fail for the same attempt ONLY the first exception should be looked
+         * into for deciding the next step. To achieve that we use the same Future for the same
+         * attempt and update it when a new attempt comes in. Note: failedExecution may be null
+         * (global) but no further attempts will be conducted {@link
+         * FailureHandlingResult#unrecoverable}.
+         */
+        boolean isFirstAttemptFailure = isFirstAttemptFailure(failedExecution);
+        if (isFirstAttemptFailure) {
+            final Collection<CompletableFuture<Map<String, String>>> resultFutures =
+                    new ArrayList<>();
+            FailureListenerContext cntx =
+                    new FailureListenerContextImpl(
+                            cause, globalFailure, ioExecutor, getExecClassLoader(failedExecution));
             for (FailureListener listener : failureListeners) {
-                listener.onFailure(cause, cntx);
-                // TODO: PANOS cleanup logging
-                log.info(
-                        "PANOS failure tag: {} cause {} message {} trace {}",
-                        cntx.getTags(),
-                        cause,
-                        cause.getMessage(),
-                        Arrays.toString(cause.getStackTrace()));
+                resultFutures.add(listener.onFailure(cause, cntx).thenApply(listerOut -> {
+                    if (listener.getOutputKeys().containsAll(listerOut.keySet())) {
+                        return listerOut;
+                    }
+                    log.warn(
+                            "Ignoring Listener {} violating key output {}",
+                            listener.getClass(),
+                            listerOut.keySet());
+                    return Collections.emptyMap();
+                }));
             }
-        } catch (Throwable e) {
-            return FailureHandlingResult.unrecoverable(
-                    failedExecution,
-                    new JobException("Unexpected exception in Failure Listener", e),
-                    cntx.getTags(),
-                    timestamp,
-                    globalFailure);
+            this.failureFuturesCollection = FutureUtils.combineAll(resultFutures);
+            this.currentFailureAttempt =
+                    failedExecution != null ? failedExecution.getAttemptId().getAttemptNumber() : 0;
         }
+
+        return failureFuturesCollection.thenApplyAsync(
+                results -> {
+                    final Map<String, String> mergedLabels = new HashMap<>();
+                    results.forEach(result -> mergedLabels.putAll(result));
+                    return handleFailure(
+                            failedExecution,
+                            cause,
+                            timestamp,
+                            verticesToRestart,
+                            globalFailure,
+                            isFirstAttemptFailure,
+                            mergedLabels);
+                },
+                mainThreadExecutor);
+    }
+
+    private FailureHandlingResult handleFailure(
+            @Nullable final Execution failedExecution,
+            final Throwable cause,
+            long timestamp,
+            final Set<ExecutionVertexID> verticesToRestart,
+            final boolean globalFailure,
+            final boolean isFirstAttemptFailure,
+            final Map<String, String> labels) {
 
         if (isUnrecoverableError(cause)) {
             return FailureHandlingResult.unrecoverable(
                     failedExecution,
                     new JobException("The failure is not recoverable", cause),
-                    cntx.getTags(),
+                    labels.values(),
                     timestamp,
                     globalFailure);
         }
 
-        restartBackoffTimeStrategy.notifyFailure(cause);
         if (restartBackoffTimeStrategy.canRestart()) {
-            numberOfRestarts++;
-
+            if (isFirstAttemptFailure) {
+                restartBackoffTimeStrategy.notifyFailure(cause);
+                numberOfRestarts++;
+            }
             return FailureHandlingResult.restartable(
                     failedExecution,
                     cause,
-                    cntx.getTags(),
+                    labels.values(),
                     timestamp,
                     verticesToRestart,
                     restartBackoffTimeStrategy.getBackoffTime(),
                     globalFailure);
         } else {
+            if (isFirstAttemptFailure) {
+                restartBackoffTimeStrategy.notifyFailure(cause);
+            }
             return FailureHandlingResult.unrecoverable(
                     failedExecution,
                     new JobException(
                             "Recovery is suppressed by " + restartBackoffTimeStrategy, cause),
-                    cntx.getTags(),
+                    labels.values(),
                     timestamp,
                     globalFailure);
         }
@@ -197,6 +249,26 @@ public class ExecutionFailureHandler {
                 ThrowableClassifier.findThrowableOfThrowableType(
                         cause, ThrowableType.NonRecoverableError);
         return unrecoverableError.isPresent();
+    }
+
+    /** @return the UserClassLoader found in the given Execution param */
+    private static ClassLoader getExecClassLoader(Execution exec) {
+        if (exec == null
+                || exec.getVertex() == null
+                || exec.getVertex().getExecutionGraphAccessor() == null) {
+            return null;
+        }
+        return exec.getVertex().getExecutionGraphAccessor().getUserClassLoader();
+    }
+
+    public boolean isFirstAttemptFailure(Execution failedExecution) {
+        if (failureFuturesCollection == null
+                || (failedExecution != null
+                        && failedExecution.getAttemptId().getAttemptNumber()
+                                != currentFailureAttempt)) {
+            return true;
+        }
+        return false;
     }
 
     public long getNumberOfRestarts() {

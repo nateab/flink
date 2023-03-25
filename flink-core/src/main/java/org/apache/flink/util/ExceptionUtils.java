@@ -725,12 +725,10 @@ public final class ExceptionUtils {
      *
      * @param throwable
      * @param classLoader
-     *
      * @return Optionally the class at the top of the stackTrace
      */
     public static Optional<Class> findClassFromStackTraceTop(
-            Throwable throwable,
-            ClassLoader classLoader) {
+            Throwable throwable, ClassLoader classLoader) {
         for (StackTraceElement currElement : throwable.getStackTrace()) {
             try {
                 Class topClass = Class.forName(currElement.getClassName(), false, classLoader);

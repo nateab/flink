@@ -171,7 +171,11 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
 
         this.executionFailureHandler =
                 new ExecutionFailureHandler(
-                        getSchedulingTopology(), failoverStrategy, restartBackoffTimeStrategy);
+                        getSchedulingTopology(),
+                        failoverStrategy,
+                        restartBackoffTimeStrategy,
+                        mainThreadExecutor,
+                        ioExecutor);
         this.schedulingStrategy =
                 schedulingStrategyFactory.createInstance(this, getSchedulingTopology());
 
@@ -179,8 +183,8 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                 checkNotNull(executionSlotAllocatorFactory)
                         .createInstance(new DefaultExecutionSlotAllocationContext());
 
-        for (FailureListener failureListener : failureListeners) {
-            executionFailureHandler.registerFailureListener(failureListener);
+        if (!failureListeners.isEmpty()) {
+            registerFailureListeners(failureListeners);
         }
 
         this.verticesWaitingForRestart = new HashSet<>();
@@ -195,6 +199,31 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
                         rpcTimeout,
                         this::startReserveAllocation,
                         mainThreadExecutor);
+    }
+
+    private void registerFailureListeners(Set<FailureListener> failureListeners) {
+        Map<String, Set<String>> listenerKeysMap = new HashMap<>();
+        for (FailureListener failureListener : failureListeners) {
+            if (listenerKeysMap.isEmpty()) {
+                listenerKeysMap.put(
+                        failureListener.getClass().getName(), failureListener.getOutputKeys());
+                this.executionFailureHandler.registerFailureListener(failureListener);
+            } else {
+                for (Map.Entry<String, Set<String>> listener : listenerKeysMap.entrySet()) {
+                    if (!Collections.disjoint(
+                            listener.getValue(), failureListener.getOutputKeys())) {
+                        log.error(
+                                "Ignoring invalid Listener implementation overlapping with {}",
+                                listener.getKey());
+                    } else {
+                        listenerKeysMap.put(
+                                failureListener.getClass().getName(),
+                                failureListener.getOutputKeys());
+                        this.executionFailureHandler.registerFailureListener(failureListener);
+                    }
+                }
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -255,7 +284,7 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         maybeRestartTasks(recordTaskFailure(failedExecution, error));
     }
 
-    protected FailureHandlingResult recordTaskFailure(
+    protected CompletableFuture<FailureHandlingResult> recordTaskFailure(
             final Execution failedExecution, @Nullable final Throwable error) {
         final long timestamp = System.currentTimeMillis();
         setGlobalFailureCause(error, timestamp);
@@ -303,20 +332,25 @@ public class DefaultScheduler extends SchedulerBase implements SchedulerOperatio
         setGlobalFailureCause(error, timestamp);
 
         log.info("Trying to recover from a global failure.", error);
-        final FailureHandlingResult failureHandlingResult =
+        final CompletableFuture<FailureHandlingResult> failureHandlingResult =
                 executionFailureHandler.getGlobalFailureHandlingResult(error, timestamp);
         maybeRestartTasks(failureHandlingResult);
     }
 
-    private void maybeRestartTasks(final FailureHandlingResult failureHandlingResult) {
-        if (failureHandlingResult.canRestart()) {
-            restartTasksWithDelay(failureHandlingResult);
-        } else {
-            failJob(
-                    failureHandlingResult.getError(),
-                    failureHandlingResult.getFailureTags(),
-                    failureHandlingResult.getTimestamp());
-        }
+    private void maybeRestartTasks(
+            final CompletableFuture<FailureHandlingResult> failureHandlingResultFuture) {
+        failureHandlingResultFuture.thenAcceptAsync(
+                failureHandlingResult -> {
+                    if (failureHandlingResult.canRestart()) {
+                        restartTasksWithDelay(failureHandlingResult);
+                    } else {
+                        failJob(
+                                failureHandlingResult.getError(),
+                                failureHandlingResult.getFailureTags(),
+                                failureHandlingResult.getTimestamp());
+                    }
+                },
+                getMainThreadExecutor());
     }
 
     private void restartTasksWithDelay(final FailureHandlingResult failureHandlingResult) {

@@ -20,8 +20,7 @@ package org.apache.flink.runtime.failurelistener;
 
 import org.apache.flink.core.failurelistener.FailureListenerContext;
 
-import java.util.Collection;
-import java.util.HashSet;
+import java.util.concurrent.Executor;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -29,19 +28,23 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class FailureListenerContextImpl implements FailureListenerContext {
     private final Throwable throwable;
     private final boolean globalFailure;
+    private final Executor ioExecutor;
     private final ClassLoader userClassLoader;
-    private final Collection<String> failureTags;
 
-    public FailureListenerContextImpl(Throwable throwable, boolean globalFailure) {
-        this(throwable, globalFailure, null);
+    public FailureListenerContextImpl(
+            Throwable throwable, Executor ioExecutor, boolean globalFailure) {
+        this(throwable, globalFailure, ioExecutor, null);
     }
 
     public FailureListenerContextImpl(
-            Throwable throwable, boolean globalFailure, ClassLoader classLoader) {
+            Throwable throwable,
+            boolean globalFailure,
+            Executor ioExecutor,
+            ClassLoader classLoader) {
         this.throwable = checkNotNull(throwable);
         this.globalFailure = globalFailure;
+        this.ioExecutor = checkNotNull(ioExecutor);
         this.userClassLoader = classLoader;
-        this.failureTags = new HashSet();
     }
 
     @Override
@@ -60,12 +63,7 @@ public class FailureListenerContextImpl implements FailureListenerContext {
     }
 
     @Override
-    public void addTag(String tag) {
-        this.failureTags.add(tag);
-    }
-
-    @Override
-    public Collection<String> getTags() {
-        return this.failureTags;
+    public Executor ioExecutor() {
+        return ioExecutor;
     }
 }

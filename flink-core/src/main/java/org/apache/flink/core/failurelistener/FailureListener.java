@@ -20,15 +20,31 @@ package org.apache.flink.core.failurelistener;
 
 import org.apache.flink.annotation.PublicEvolving;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
 /** Failure listener enabling custom logic for each type of failure tracked in the job manager. */
 @PublicEvolving
 public interface FailureListener {
     /**
-     * Method to handle a failure as part of the listener.
+     * Method to return all the label Keys the listener can associate with Values in case of a
+     * failure {@code onFailure}. Note that Keys must unique and properly defined per implementation
+     * otherwise will be ignored.
+     *
+     * @return the unique label Keys for the Listener
+     */
+    Set<String> getOutputKeys();
+
+    /**
+     * Method to handle a failure as part of the listener and optionally return a map of KV pairs
+     * (labels). Note that Values should only be associated with Keys from {@code getLabelKeys}
+     * method otherwise will be ignored.
      *
      * @param cause the exception that caused this failure
      * @param context the context that includes extra information (e.g., if it was a global failure)
-     *     along with the Tags associated with the failure
+     * @return Optional map of KV pairs (labels) associated with the failure
      */
-    void onFailure(Throwable cause, FailureListenerContext context);
+    CompletableFuture<Map<String, String>> onFailure(
+            Throwable cause, FailureListenerContext context);
 }

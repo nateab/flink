@@ -23,6 +23,11 @@ import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.metrics.MetricNames;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
 /**
  * Counting implementation of {@link FailureListener} that records the count of job failures.
  * Counter includes failures that ignore restarts thus may be larger than numRestarts.
@@ -30,12 +35,23 @@ import org.apache.flink.runtime.metrics.MetricNames;
 public class CountingFailureListener implements FailureListener {
     private final Counter failureCount;
 
+    @Override
+    public Set<String> getOutputKeys() {
+        return Collections.emptySet();
+    }
+
     public CountingFailureListener(MetricGroup metricGroup) {
         this.failureCount = metricGroup.counter(MetricNames.NUM_JOB_FAILURES);
     }
 
     @Override
-    public void onFailure(Throwable cause, FailureListenerContext context) {
-        failureCount.inc();
+    public CompletableFuture<Map<String, String>> onFailure(
+            Throwable cause, FailureListenerContext context) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    failureCount.inc();
+                    return Collections.emptyMap();
+                },
+                context.ioExecutor());
     }
 }

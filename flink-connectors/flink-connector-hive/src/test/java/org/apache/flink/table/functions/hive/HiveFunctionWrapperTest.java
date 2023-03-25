@@ -94,14 +94,16 @@ public class HiveFunctionWrapperTest {
     public void testIsUserCodeClassLoader() throws Exception {
         ClassLoader userClassLoader =
                 FlinkUserCodeClassLoaders.create(
-                        new URL[]{udfJar.toURI().toURL()},
+                        new URL[] {udfJar.toURI().toURL()},
                         getClass().getClassLoader(),
                         new Configuration());
 
         Class<?> systemClass = userClassLoader.loadClass(FailureListener.class.getName());
-        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(systemClass.getClassLoader())).isFalse();
+        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(systemClass.getClassLoader()))
+                .isFalse();
 
         Class<?> userClass = userClassLoader.loadClass(udfClassName);
-        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(userClass.getClassLoader())).isTrue();
+        assertThat(FlinkUserCodeClassLoaders.isUserCodeClassLoader(userClass.getClassLoader()))
+                .isTrue();
     }
 }

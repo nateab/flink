@@ -21,11 +21,31 @@ package org.apache.flink.test.plugin.jar.failurelistener;
 import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.core.failurelistener.FailureListenerContext;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+
 /** Implementation of {@link FailureListener} for plugin loading test. */
 public class TestFailureListener implements FailureListener {
 
+    private static final Set<String> labelKeys = Collections.singleton("test_label");
+
     @Override
-    public void onFailure(Throwable cause, FailureListenerContext context) {
-        context.addTag("SYSTEM");
+    public Set<String> getOutputKeys() {
+        return labelKeys;
+    }
+
+    @Override
+    public CompletableFuture<Map<String, String>> onFailure(
+            Throwable cause, FailureListenerContext context) {
+        return CompletableFuture.supplyAsync(
+                () ->
+                        new HashMap<String, String>() {
+                            {
+                                put("test_label", "SYSTEM");
+                            }
+                        });
     }
 }

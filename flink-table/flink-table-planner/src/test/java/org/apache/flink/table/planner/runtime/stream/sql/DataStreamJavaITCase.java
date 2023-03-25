@@ -107,8 +107,6 @@ import static org.apache.flink.table.api.Expressions.$;
 import static org.apache.flink.table.api.Expressions.sourceWatermark;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_LOWER_UDF_CLASS;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_LOWER_UDF_CODE;
-import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_THROWING_UDF_CLASS;
-import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_THROWING_UDF_CODE;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_UPPER_UDF_CLASS;
 import static org.apache.flink.table.utils.UserDefinedFunctions.GENERATED_UPPER_UDF_CODE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -135,8 +133,6 @@ public class DataStreamJavaITCase extends AbstractTestBase {
     private static String jarPath1;
     private static String udfClassName2;
     private static String jarPath2;
-    private static String udfClassName3;
-    private static String jarPath3;
 
     @BeforeClass
     public static void beforeClass() throws IOException {
@@ -156,15 +152,6 @@ public class DataStreamJavaITCase extends AbstractTestBase {
                                 "test-classloader-udf2.jar",
                                 udfClassName2,
                                 String.format(GENERATED_UPPER_UDF_CODE, udfClassName2))
-                        .toURI()
-                        .toString();
-        udfClassName3 = GENERATED_THROWING_UDF_CLASS;
-        jarPath3 =
-                UserClassLoaderJarTestUtils.createJarFile(
-                                TEMPORARY_FOLDER.newFolder("test-jar3"),
-                                "test-classloader-udf3.jar",
-                                udfClassName2,
-                                String.format(GENERATED_THROWING_UDF_CODE, udfClassName3))
                         .toURI()
                         .toString();
     }

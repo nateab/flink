@@ -264,6 +264,18 @@ public class JobManagerOptions {
                             "The maximum number of historical execution attempts kept in history.");
 
     /**
+     * Flag indicating whether JobManager should load available Failure Listener plugins at startup.
+     */
+    @Documentation.Section(Documentation.Sections.ALL_JOB_MANAGER)
+    public static final ConfigOption<Boolean> ENABLE_FAILURELISTENER_PLUGINS =
+            key("jobmanager.enable-failurelistener-plugins")
+                    .booleanType()
+                    .defaultValue(true)
+                    .withDescription(
+                            "Flag indicating whether JobManager should load available Failure Listener plugins at startup.");
+
+
+    /**
      * This option specifies the failover strategy, i.e. how the job computation recovers from task
      * failures.
      */

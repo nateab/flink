@@ -266,6 +266,7 @@ public class FunctionITCase extends StreamingTestBase {
         tEnv().executeSql(sourceDDL);
         tEnv().executeSql(sinkDDL);
         tEnv().executeSql(query);
+        Table tableQuery = tEnv().sqlQuery(query);
         try {
             tableQuery.executeInsert("t2").await();
         } catch (Exception e) {
