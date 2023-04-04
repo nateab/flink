@@ -569,8 +569,8 @@ public final class ExceptionUtils {
     }
 
     /**
-     * Checks whether a throwable chain contains a specific error message and returns the
-     * corresponding throwable.
+     * Checks whether a throwable chain contains a specific error message including exact case and
+     * returns the corresponding throwable.
      *
      * @param throwable the throwable chain to check.
      * @param searchMessage the error message to search for in the chain.
@@ -578,13 +578,28 @@ public final class ExceptionUtils {
      */
     public static Optional<Throwable> findThrowableWithMessage(
             Throwable throwable, String searchMessage) {
+        return findThrowableWithMessage(throwable, searchMessage, true);
+    }
+
+    /**
+     * Checks whether a throwable chain contains a specific error message and returns the
+     * corresponding throwable.
+     *
+     * @param throwable the throwable chain to check.
+     * @param searchMessage the error message to search for in the chain.
+     * @param isCaseSensitive boolean to determine if the text search should be case-sensitive.
+     * @return Optional throwable containing the search message if available, otherwise empty
+     */
+    public static Optional<Throwable> findThrowableWithMessage(
+            Throwable throwable, String searchMessage, boolean isCaseSensitive) {
         if (throwable == null || searchMessage == null) {
             return Optional.empty();
         }
 
         Throwable t = throwable;
         while (t != null) {
-            if (t.getMessage() != null && t.getMessage().contains(searchMessage)) {
+            if (t.getMessage() != null && isCaseSensitive ? t.getMessage().contains(searchMessage)
+                    : t.getMessage().toLowerCase().contains(searchMessage)) {
                 return Optional.of(t);
             } else {
                 t = t.getCause();

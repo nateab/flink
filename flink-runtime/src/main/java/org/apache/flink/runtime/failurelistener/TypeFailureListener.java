@@ -19,6 +19,7 @@ package org.apache.flink.runtime.failurelistener;
 
 import org.apache.flink.core.failurelistener.FailureListener;
 import org.apache.flink.core.failurelistener.FailureListenerContext;
+import org.apache.flink.types.DeserializationException;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkUserCodeClassLoaders;
 
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import static org.apache.flink.runtime.io.network.api.serialization.NonSpanningWrapper.BROKEN_SERIALIZATION_ERROR_MESSAGE;
 import static org.apache.flink.util.ExceptionUtils.findClassFromStackTraceTop;
 
 /**
@@ -39,6 +41,7 @@ public class TypeFailureListener implements FailureListener {
 
     private static final String typeLabelKey = "type_label";
     private static final Set<String> labelKeys = Collections.singleton(typeLabelKey);
+    private static final String SERIALIZE_MESSAGE = "serializ";
 
     @Override
     public Set<String> getOutputKeys() {
@@ -68,6 +71,18 @@ public class TypeFailureListener implements FailureListener {
                                 && FlinkUserCodeClassLoaders.isUserCodeClassLoader(
                                         classOnStackTop.get().getClassLoader())) {
                             labels.put(typeLabelKey, "UDF_USER");
+                        }
+                    }
+                    // This is meant to capture any exception that has "serializ" in the error
+                    // message, such as "(de)serialize", "(de)serialization", or "(de)serializable"
+                    Optional<Throwable> serializationException =
+                            ExceptionUtils.findThrowableWithMessage(cause, SERIALIZE_MESSAGE);
+                    if (serializationException.isPresent()) {
+                        // check if system error, otherwise it is user error
+                        if (serializationException.get().getMessage().contains(BROKEN_SERIALIZATION_ERROR_MESSAGE)){
+                            labels.put(typeLabelKey, "SERIALIZATION_SYSTEM");
+                        } else {
+                            labels.put(typeLabelKey, "SERIALIZATION_USER");
                         }
                     }
                     labels.put(typeLabelKey, "UNKNOWN");

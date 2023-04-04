@@ -37,9 +37,9 @@ import static org.apache.flink.runtime.io.network.api.serialization.RecordDeseri
 import static org.apache.flink.runtime.io.network.api.serialization.SpillingAdaptiveSpanningRecordDeserializer.LENGTH_BYTES;
 import static org.apache.flink.runtime.io.network.buffer.Buffer.DataType.DATA_BUFFER;
 
-final class NonSpanningWrapper implements DataInputView {
+public final class NonSpanningWrapper implements DataInputView {
 
-    private static final String BROKEN_SERIALIZATION_ERROR_MESSAGE =
+    public static final String BROKEN_SERIALIZATION_ERROR_MESSAGE =
             "Serializer consumed more bytes than the record had. "
                     + "This indicates broken serialization. If you are using custom serialization types "
                     + "(Value or Writable), check their serialization methods. If you are using a "
