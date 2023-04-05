@@ -18,6 +18,18 @@
 
 package org.apache.flink.test.misc;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+
+import java.util.concurrent.ExecutorService;
+
+import java.util.concurrent.Executors;
+
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
@@ -25,14 +37,20 @@ import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.MemorySize;
 import org.apache.flink.configuration.TaskManagerOptions;
+import org.apache.flink.core.failurelistener.FailureListenerContext;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.runtime.client.JobExecutionException;
+import org.apache.flink.runtime.failurelistener.FailureListenerContextImpl;
+import org.apache.flink.runtime.failurelistener.TypeFailureListener;
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
 import org.apache.flink.test.util.MiniClusterWithClientResource;
 import org.apache.flink.types.Value;
 import org.apache.flink.util.TestLogger;
 
+import org.apache.flink.util.concurrent.ExecutorThreadFactory;
+
+import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -117,6 +135,50 @@ public class CustomSerializationITCase extends TestLogger {
             Optional<IOException> rootCause = findThrowable(e, IOException.class);
             assertTrue(rootCause.isPresent());
             assertTrue(rootCause.get().getMessage().contains("broken serialization"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        }
+    }
+
+    @Test
+    public void testSerializationSystemErrorLabel() throws ExecutionException, InterruptedException {
+        try {
+            ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+            env.setParallelism(PARLLELISM);
+
+            env.generateSequence(1, 10 * PARLLELISM)
+                    .map(
+                            new MapFunction<Long, ConsumesTooMuchSpanning>() {
+                                @Override
+                                public ConsumesTooMuchSpanning map(Long value) throws Exception {
+                                    return new ConsumesTooMuchSpanning();
+                                }
+                            })
+                    .rebalance()
+                    .output(new DiscardingOutputFormat<ConsumesTooMuchSpanning>());
+
+
+            env.execute();
+        } catch (JobExecutionException e) {
+
+            FailureListenerContext cntx =
+                    new FailureListenerContextImpl(
+                            e, true, Executors.newFixedThreadPool(
+                            1, new ExecutorThreadFactory("jobmanager-io")));
+
+            final TypeFailureListener listener = new TypeFailureListener();
+            final CompletableFuture<Map<String, String>> resultFuture = listener.onFailure(e, cntx).thenApply(listerOut -> {
+                if (listener.getOutputKeys().containsAll(listerOut.keySet())) {
+                    return listerOut;
+                }
+                log.warn(
+                        "Ignoring Listener {} violating key output {}",
+                        listener.getClass(),
+                        listerOut.keySet());
+                return Collections.emptyMap();
+            });
+            assertTrue(resultFuture.get().containsValue("SERIALIZATION_SYSTEM"));
         } catch (Exception e) {
             e.printStackTrace();
             fail(e.getMessage());

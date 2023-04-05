@@ -32,7 +32,7 @@ public class FailureListenerContextImpl implements FailureListenerContext {
     private final ClassLoader userClassLoader;
 
     public FailureListenerContextImpl(
-            Throwable throwable, Executor ioExecutor, boolean globalFailure) {
+            Throwable throwable, boolean globalFailure, Executor ioExecutor) {
         this(throwable, globalFailure, ioExecutor, null);
     }
 

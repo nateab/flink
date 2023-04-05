@@ -85,7 +85,9 @@ public class TypeFailureListener implements FailureListener {
                             labels.put(typeLabelKey, "SERIALIZATION_USER");
                         }
                     }
-                    labels.put(typeLabelKey, "UNKNOWN");
+                    if(!labels.containsKey(typeLabelKey)){
+                        labels.put(typeLabelKey, "UNKNOWN");
+                    }
                     return labels;
                 },
                 context.ioExecutor());
