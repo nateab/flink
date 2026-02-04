@@ -66,9 +66,24 @@ abstract class AbstractRocksDBAppendingState<K, N, IN, SV, OUT>
 
     @Override
     public void updateInternal(SV valueToStore) throws RocksDBException {
-        updateInternal(getKeyBytes(), valueToStore);
+        try {
+            // Both key and value use ByteBuffer to avoid array copies
+            // Key buffer must be obtained first since value serialization reuses dataOutputView
+            ByteBuffer keyBuffer = serializeCurrentKeyWithGroupAndNamespaceToByteBuffer();
+            ByteBuffer valueBuffer = serializeValueToByteBuffer(valueToStore);
+            backend.db.put(columnFamily, writeOptions, keyBuffer, valueBuffer);
+        } catch (IOException e) {
+            throw new FlinkRuntimeException("Error while serializing value", e);
+        }
     }
 
+    /**
+     * Updates the state with a pre-serialized key. This method is used when the key has already
+     * been serialized (e.g., for merge operations where the same key is read and written).
+     *
+     * <p>Note: This method still wraps the key bytes in ByteBuffer but cannot avoid the initial key
+     * serialization copy. Use {@link #updateInternal(Object)} when possible.
+     */
     void updateInternal(byte[] key, SV valueToStore) throws RocksDBException {
         try {
             // Serialize value and write to RocksDB using ByteBuffer to avoid copy

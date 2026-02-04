@@ -134,14 +134,15 @@ class RocksDBMapState<K, N, UK, UV> extends AbstractRocksDBState<K, N, Map<UK, U
 
     @Override
     public void put(UK userKey, UV userValue) throws IOException, RocksDBException {
-        // Key still uses byte[] (SerializedCompositeKeyBuilder already copies)
-        // Value uses ByteBuffer to avoid additional copy
-        byte[] rawKeyBytes =
-                serializeCurrentKeyWithGroupAndNamespacePlusUserKey(userKey, userKeySerializer);
+        // Both key and value use ByteBuffer to avoid array copies
+        // Key buffer must be obtained first since value serialization reuses dataOutputView
+        ByteBuffer rawKeyBuffer =
+                serializeCurrentKeyWithGroupAndNamespacePlusUserKeyToByteBuffer(
+                        userKey, userKeySerializer);
         ByteBuffer rawValueBuffer =
                 serializeValueNullSensitiveToByteBuffer(userValue, userValueSerializer);
 
-        backend.db.put(columnFamily, writeOptions, ByteBuffer.wrap(rawKeyBytes), rawValueBuffer);
+        backend.db.put(columnFamily, writeOptions, rawKeyBuffer, rawValueBuffer);
     }
 
     @Override
