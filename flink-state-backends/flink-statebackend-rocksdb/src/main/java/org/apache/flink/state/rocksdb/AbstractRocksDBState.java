@@ -169,6 +169,49 @@ public abstract class AbstractRocksDBState<K, N, V> implements InternalKvState<K
                 currentNamespace, namespaceSerializer);
     }
 
+    // ==================== Zero-copy key serialization methods ====================
+    //
+    // These methods return ByteBuffer views of the serialized key, avoiding
+    // the Arrays.copyOf() allocation that the byte[] methods perform.
+    //
+    // IMPORTANT: The returned ByteBuffer wraps the internal buffer and is only
+    // valid until the next key serialization operation. The caller must consume
+    // the data synchronously before any other key serialize method is called.
+    //
+    // This is safe for single RocksDB.put()/get()/delete() operations because:
+    // - Flink uses single-threaded mailbox execution per task
+    // - RocksDB operations are synchronous and copy data before returning
+    //
+    // WARNING: Do NOT use with WriteBatch operations - batch defers writes!
+
+    /**
+     * Serializes the current key with group and namespace to a ByteBuffer view. This avoids the
+     * array copy that {@link #serializeCurrentKeyWithGroupAndNamespace()} performs.
+     *
+     * <p>WARNING: Do NOT use with WriteBatch operations!
+     *
+     * @return ByteBuffer view of the serialized key (position=0, limit=length)
+     */
+    ByteBuffer serializeCurrentKeyWithGroupAndNamespaceToByteBuffer() {
+        return sharedKeyNamespaceSerializer.buildCompositeKeyNamespaceToByteBuffer(
+                currentNamespace, namespaceSerializer);
+    }
+
+    /**
+     * Serializes the current key with group, namespace, and user key to a ByteBuffer view. This
+     * avoids the array copy that {@link #serializeCurrentKeyWithGroupAndNamespacePlusUserKey}
+     * performs.
+     *
+     * <p>WARNING: Do NOT use with WriteBatch operations!
+     *
+     * @return ByteBuffer view of the serialized key (position=0, limit=length)
+     */
+    <UK> ByteBuffer serializeCurrentKeyWithGroupAndNamespacePlusUserKeyToByteBuffer(
+            UK userKey, TypeSerializer<UK> userKeySerializer) throws IOException {
+        return sharedKeyNamespaceSerializer.buildCompositeKeyNamesSpaceUserKeyToByteBuffer(
+                currentNamespace, namespaceSerializer, userKey, userKeySerializer);
+    }
+
     byte[] serializeValue(V value) throws IOException {
         return serializeValue(value, valueSerializer);
     }

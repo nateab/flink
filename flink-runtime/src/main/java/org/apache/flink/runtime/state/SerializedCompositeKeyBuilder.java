@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Responsible for serialization of currentKey, currentGroup and namespace. Will reuse the previous
@@ -179,6 +180,105 @@ public final class SerializedCompositeKeyBuilder<K> {
     @Nonnull
     public byte[] build() throws IOException {
         return keyOutView.getCopyOfBuffer();
+    }
+
+    // ==================== Zero-copy ByteBuffer methods ====================
+    //
+    // These methods return a ByteBuffer view of the internal buffer, avoiding
+    // the Arrays.copyOf() allocation that getCopyOfBuffer() performs.
+    //
+    // IMPORTANT: The returned ByteBuffer wraps the internal buffer and is only
+    // valid until the next serialization operation. The caller must consume
+    // the data synchronously before any other method is called.
+    //
+    // This is safe for RocksDB operations because:
+    // - Flink uses single-threaded mailbox execution per task
+    // - RocksDB.put()/get()/delete() are synchronous and copy data before returning
+    //
+    // WARNING: Do NOT use with WriteBatch operations - batch defers writes!
+
+    /**
+     * Returns a ByteBuffer view of the serialized composite key (key-group + key + namespace).
+     *
+     * <p>Zero-copy alternative to {@link #buildCompositeKeyNamespace}. The returned ByteBuffer
+     * wraps the internal buffer and is only valid until the next serialization operation.
+     *
+     * @param namespace the namespace to concatenate for the serialized composite key bytes.
+     * @param namespaceSerializer the serializer to obtain the serialized form of the namespace.
+     * @param <N> the type of the namespace.
+     * @return ByteBuffer view of the serialized composite key (position=0, limit=length).
+     */
+    @Nonnull
+    public <N> ByteBuffer buildCompositeKeyNamespaceToByteBuffer(
+            @Nonnull N namespace, @Nonnull TypeSerializer<N> namespaceSerializer) {
+        try {
+            serializeNamespace(namespace, namespaceSerializer);
+            return ByteBuffer.wrap(keyOutView.getSharedBuffer(), 0, keyOutView.length());
+        } catch (IOException shouldNeverHappen) {
+            throw new FlinkRuntimeException(shouldNeverHappen);
+        }
+    }
+
+    /**
+     * Returns a ByteBuffer view of the serialized composite key with user key.
+     *
+     * <p>Zero-copy alternative to {@link #buildCompositeKeyNamesSpaceUserKey}. The returned
+     * ByteBuffer wraps the internal buffer and is only valid until the next serialization
+     * operation.
+     *
+     * @param namespace the namespace to concatenate for the serialized composite key bytes.
+     * @param namespaceSerializer the serializer to obtain the serialized form of the namespace.
+     * @param userKey the user-key to concatenate after the namespace.
+     * @param userKeySerializer the serializer to obtain the serialized form of the user-key.
+     * @param <N> the type of the namespace.
+     * @param <UK> the type of the user-key.
+     * @return ByteBuffer view of the serialized composite key (position=0, limit=length).
+     */
+    @Nonnull
+    public <N, UK> ByteBuffer buildCompositeKeyNamesSpaceUserKeyToByteBuffer(
+            @Nonnull N namespace,
+            @Nonnull TypeSerializer<N> namespaceSerializer,
+            @Nonnull UK userKey,
+            @Nonnull TypeSerializer<UK> userKeySerializer)
+            throws IOException {
+        serializeNamespace(namespace, namespaceSerializer);
+        userKeySerializer.serialize(userKey, keyOutView);
+        return ByteBuffer.wrap(keyOutView.getSharedBuffer(), 0, keyOutView.length());
+    }
+
+    /**
+     * Returns a ByteBuffer view of the serialized composite key with user key, using a previously
+     * set namespace.
+     *
+     * <p>Zero-copy alternative to {@link #buildCompositeKeyUserKey}. The returned ByteBuffer wraps
+     * the internal buffer and is only valid until the next serialization operation.
+     *
+     * @param userKey the user-key to concatenate after the namespace.
+     * @param userKeySerializer the serializer to obtain the serialized form of the user-key.
+     * @param <UK> the type of the user-key.
+     * @return ByteBuffer view of the serialized composite key (position=0, limit=length).
+     */
+    @Nonnull
+    public <UK> ByteBuffer buildCompositeKeyUserKeyToByteBuffer(
+            @Nonnull UK userKey, @Nonnull TypeSerializer<UK> userKeySerializer) throws IOException {
+        assert isNamespaceWritten();
+        resetToNamespace();
+
+        userKeySerializer.serialize(userKey, keyOutView);
+        return ByteBuffer.wrap(keyOutView.getSharedBuffer(), 0, keyOutView.length());
+    }
+
+    /**
+     * Returns a ByteBuffer view of whatever has been serialized so far.
+     *
+     * <p>Zero-copy alternative to {@link #build()}. The returned ByteBuffer wraps the internal
+     * buffer and is only valid until the next serialization operation.
+     *
+     * @return ByteBuffer view of the serialized data (position=0, limit=length).
+     */
+    @Nonnull
+    public ByteBuffer buildToByteBuffer() {
+        return ByteBuffer.wrap(keyOutView.getSharedBuffer(), 0, keyOutView.length());
     }
 
     private void serializeKeyGroupAndKey(K key, int keyGroupId) throws IOException {

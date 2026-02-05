@@ -100,11 +100,11 @@ class RocksDBValueState<K, N, V> extends AbstractRocksDBState<K, N, V>
         }
 
         try {
-            // Key still uses byte[] (SerializedCompositeKeyBuilder already copies)
-            // Value uses ByteBuffer to avoid additional copy
-            byte[] keyBytes = serializeCurrentKeyWithGroupAndNamespace();
+            // Both key and value use ByteBuffer to avoid array copies
+            // Key buffer must be obtained first since value serialization reuses dataOutputView
+            ByteBuffer keyBuffer = serializeCurrentKeyWithGroupAndNamespaceToByteBuffer();
             ByteBuffer valueBuffer = serializeValueToByteBuffer(value);
-            backend.db.put(columnFamily, writeOptions, ByteBuffer.wrap(keyBytes), valueBuffer);
+            backend.db.put(columnFamily, writeOptions, keyBuffer, valueBuffer);
         } catch (RocksDBException e) {
             throw new IOException("Error while adding data to RocksDB", e);
         }
