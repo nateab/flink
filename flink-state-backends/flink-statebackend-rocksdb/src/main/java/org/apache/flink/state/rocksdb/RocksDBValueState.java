@@ -27,6 +27,7 @@ import org.apache.flink.runtime.state.RegisteredKeyValueStateBackendMetaInfo;
 import org.apache.flink.runtime.state.internal.InternalValueState;
 
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
@@ -79,13 +80,11 @@ class RocksDBValueState<K, N, V> extends AbstractRocksDBState<K, N, V>
     @Override
     public V value() throws IOException {
         try {
-            byte[] valueBytes =
-                    backend.db.get(columnFamily, serializeCurrentKeyWithGroupAndNamespace());
-
-            if (valueBytes == null) {
+            int valueSize = getFromRocksDB(serializeCurrentKeyWithGroupAndNamespace());
+            if (valueSize == RocksDB.NOT_FOUND) {
                 return getDefaultValue();
             }
-            dataInputView.setBuffer(valueBytes);
+            dataInputView.setBuffer(reusableGetBuffer, 0, valueSize);
             return valueSerializer.deserialize(dataInputView);
         } catch (RocksDBException e) {
             throw new IOException("Error while retrieving data from RocksDB.", e);

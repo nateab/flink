@@ -23,6 +23,7 @@ import org.apache.flink.runtime.state.internal.InternalAppendingState;
 import org.apache.flink.util.FlinkRuntimeException;
 
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
@@ -56,11 +57,11 @@ abstract class AbstractRocksDBAppendingState<K, N, IN, SV, OUT>
     }
 
     SV getInternal(byte[] key) throws IOException, RocksDBException {
-        byte[] valueBytes = backend.db.get(columnFamily, key);
-        if (valueBytes == null) {
+        int valueSize = getFromRocksDB(key);
+        if (valueSize == RocksDB.NOT_FOUND) {
             return null;
         }
-        dataInputView.setBuffer(valueBytes);
+        dataInputView.setBuffer(reusableGetBuffer, 0, valueSize);
         return valueSerializer.deserialize(dataInputView);
     }
 

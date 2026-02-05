@@ -41,6 +41,12 @@ import java.nio.ByteBuffer;
 @Internal
 public final class SerializedCompositeKeyBuilder<K> {
 
+    /**
+     * VoidNamespace singleton byte - VoidNamespaceSerializer always writes exactly one byte with
+     * value 0. We cache this constant to enable the fast-path optimization for VoidNamespace.
+     */
+    private static final byte VOID_NAMESPACE_BYTE = 0;
+
     /** The serializer for the key. */
     @Nonnull private final TypeSerializer<K> keySerializer;
 
@@ -301,6 +307,16 @@ public final class SerializedCompositeKeyBuilder<K> {
         // composite.
         assert isKeyWritten();
         resetToKey();
+
+        // Fast-path for VoidNamespace: Skip the full serialization overhead.
+        // VoidNamespace is the most common namespace type (used for non-windowed state).
+        // VoidNamespaceSerializer always writes exactly one byte (value 0) and has fixed size,
+        // so ambiguousCompositeKeyPossible is always false for VoidNamespace.
+        if (namespace == VoidNamespace.INSTANCE) {
+            keyOutView.writeByte(VOID_NAMESPACE_BYTE);
+            afterNamespaceMark = keyOutView.length();
+            return;
+        }
 
         final boolean ambiguousCompositeKeyPossible =
                 isAmbiguousCompositeKeyPossible(namespaceSerializer);
