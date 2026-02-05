@@ -76,6 +76,12 @@ public abstract class AbstractRocksDBState<K, N, V> implements InternalKvState<K
 
     protected final DataInputDeserializer dataInputView;
 
+    /**
+     * Reusable byte array for RocksDB get() operations to avoid per-read allocations.
+     * Grown as needed when values exceed the current buffer size.
+     */
+    protected byte[] reusableGetBuffer = new byte[128];
+
     private final SerializedCompositeKeyBuilder<K> sharedKeyNamespaceSerializer;
 
     /**
@@ -195,6 +201,35 @@ public abstract class AbstractRocksDBState<K, N, V> implements InternalKvState<K
     ByteBuffer serializeCurrentKeyWithGroupAndNamespaceToByteBuffer() {
         return sharedKeyNamespaceSerializer.buildCompositeKeyNamespaceToByteBuffer(
                 currentNamespace, namespaceSerializer);
+    }
+
+    /**
+     * Performs a RocksDB get using the reusable value buffer to avoid per-read byte[]
+     * allocations. Returns the number of bytes read, or {@code RocksDB.NOT_FOUND} if
+     * the key was not found.
+     *
+     * <p>After a successful call (return >= 0), the value data is available in
+     * {@link #reusableGetBuffer} from index 0 to the returned length. The caller should
+     * use {@code dataInputView.setBuffer(reusableGetBuffer, 0, returnedLength)} to read.
+     *
+     * @param key the serialized key bytes
+     * @return the actual value size in bytes, or {@code RocksDB.NOT_FOUND}
+     */
+    protected int getFromRocksDB(byte[] key) throws RocksDBException {
+        int required = backend.db.get(
+                columnFamily, backend.getReadOptions(),
+                key, 0, key.length,
+                reusableGetBuffer, 0, reusableGetBuffer.length);
+        if (required <= reusableGetBuffer.length) {
+            return required;
+        }
+        // Value didn't fit, grow buffer and retry
+        reusableGetBuffer = new byte[required];
+        backend.db.get(
+                columnFamily, backend.getReadOptions(),
+                key, 0, key.length,
+                reusableGetBuffer, 0, reusableGetBuffer.length);
+        return required;
     }
 
     /**

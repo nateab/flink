@@ -125,11 +125,11 @@ class RocksDBMapState<K, N, UK, UV> extends AbstractRocksDBState<K, N, Map<UK, U
     public UV get(UK userKey) throws IOException, RocksDBException {
         byte[] rawKeyBytes =
                 serializeCurrentKeyWithGroupAndNamespacePlusUserKey(userKey, userKeySerializer);
-        byte[] rawValueBytes = backend.db.get(columnFamily, rawKeyBytes);
+        int valueSize = getFromRocksDB(rawKeyBytes);
 
-        return (rawValueBytes == null
+        return (valueSize == RocksDB.NOT_FOUND
                 ? null
-                : deserializeUserValue(dataInputView, rawValueBytes, userValueSerializer));
+                : deserializeUserValue(dataInputView, reusableGetBuffer, valueSize, userValueSerializer));
     }
 
     @Override
@@ -177,9 +177,9 @@ class RocksDBMapState<K, N, UK, UV> extends AbstractRocksDBState<K, N, Map<UK, U
     public boolean contains(UK userKey) throws IOException, RocksDBException {
         byte[] rawKeyBytes =
                 serializeCurrentKeyWithGroupAndNamespacePlusUserKey(userKey, userKeySerializer);
-        byte[] rawValueBytes = backend.db.get(columnFamily, rawKeyBytes);
+        int valueSize = getFromRocksDB(rawKeyBytes);
 
-        return (rawValueBytes != null);
+        return (valueSize != RocksDB.NOT_FOUND);
     }
 
     @Override
@@ -411,6 +411,20 @@ class RocksDBMapState<K, N, UK, UV> extends AbstractRocksDBState<K, N, Map<UK, U
             throws IOException {
 
         dataInputView.setBuffer(rawValueBytes);
+
+        boolean isNull = dataInputView.readBoolean();
+
+        return isNull ? null : valueSerializer.deserialize(dataInputView);
+    }
+
+    private static <UV> UV deserializeUserValue(
+            DataInputDeserializer dataInputView,
+            byte[] rawValueBytes,
+            int length,
+            TypeSerializer<UV> valueSerializer)
+            throws IOException {
+
+        dataInputView.setBuffer(rawValueBytes, 0, length);
 
         boolean isNull = dataInputView.readBoolean();
 
